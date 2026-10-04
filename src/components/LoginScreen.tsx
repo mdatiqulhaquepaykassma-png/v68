@@ -9,16 +9,30 @@ import { BrandLogo } from "./BrandLogo";
 interface LoginScreenProps {
   onLoginSuccess: (user: UserWallet) => void;
   onOpenInstallApp?: () => void;
+  onBackAsGuest?: () => void;
+  initialMode?: "signin" | "signup";
 }
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onOpenInstallApp }) => {
-  const [mode, setMode] = useState<"signin" | "signup">("signup");
+export const LoginScreen: React.FC<LoginScreenProps> = ({
+  onLoginSuccess,
+  onOpenInstallApp,
+  onBackAsGuest,
+  initialMode = "signup",
+}) => {
+  const [mode, setMode] = useState<"signin" | "signup">(initialMode);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [refCode, setRefCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Sync mode if initialMode changes
+  useEffect(() => {
+    if (initialMode) {
+      setMode(initialMode);
+    }
+  }, [initialMode]);
 
   // New Device OTP Verification State
   const [otpRequired, setOtpRequired] = useState(false);
@@ -396,6 +410,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onOpen
                 </button>
               </form>
             </>
+          )}
+
+          {onBackAsGuest && (
+            <div className="mt-3 pt-3 border-t border-white/5">
+              <button
+                type="button"
+                onClick={onBackAsGuest}
+                className="w-full py-2 bg-neutral-900/90 hover:bg-neutral-800 border border-neutral-700/80 hover:border-amber-400/50 text-neutral-300 hover:text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-sm"
+              >
+                <span>← অতিথি হিসেবে গেম দেখুন (Browse as Guest)</span>
+              </button>
+            </div>
           )}
         </div>
 

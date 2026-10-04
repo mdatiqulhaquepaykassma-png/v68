@@ -26,16 +26,6 @@ interface DirectChallengeModalProps {
   onUpdateWallet: (updatedUser: UserWallet) => void;
 }
 
-// Mock active online players for quick selection
-const ONLINE_PLAYERS = [
-  { username: "TigerMaster", winRate: "68%", level: "VIP Diamond", hands: 126 },
-  { username: "Challenger99", winRate: "54%", level: "Silver", hands: 48 },
-  { username: "DragonKing", winRate: "72%", level: "Master", hands: 210 },
-  { username: "GoldRoller", winRate: "61%", level: "Gold", hands: 95 },
-  { username: "ApexLegend", winRate: "80%", level: "Master", hands: 340 },
-  { username: "ProBettor99", winRate: "58%", level: "Platinum", hands: 82 },
-];
-
 export const DirectChallengeModal: React.FC<DirectChallengeModalProps> = ({
   isOpen,
   onClose,
@@ -43,10 +33,23 @@ export const DirectChallengeModal: React.FC<DirectChallengeModalProps> = ({
   onChallengeCreated,
   onUpdateWallet,
 }) => {
-  const [targetUsername, setTargetUsername] = useState<string>("TigerMaster");
+  const [realPlayers, setRealPlayers] = useState<any[]>([]);
+  const [targetUsername, setTargetUsername] = useState<string>("");
   const [stakeAmount, setStakeAmount] = useState<number>(500);
   const [choice, setChoice] = useState<"dragon" | "tiger">("dragon");
   const [isSingleRound, setIsSingleRound] = useState<boolean>(true);
+
+  React.useEffect(() => {
+    fetch("/api/transparency/users")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.users && Array.isArray(data.users)) {
+          const others = data.users.filter((u: any) => u.userId !== currentUser.userId);
+          setRealPlayers(others);
+        }
+      })
+      .catch(() => {});
+  }, [currentUser.userId]);
 
   // Modal Step: 'form' -> 'confirm' -> 'success'
   const [step, setStep] = useState<"form" | "confirm" | "success">("form");
@@ -192,30 +195,32 @@ export const DirectChallengeModal: React.FC<DirectChallengeModalProps> = ({
                   Select or Search Online Player:
                 </label>
 
-                {/* Quick Select Online Players Chips */}
-                <div className="grid grid-cols-3 gap-1.5 mb-2">
-                  {ONLINE_PLAYERS.map((p) => (
-                    <button
-                      key={p.username}
-                      type="button"
-                      onClick={() => {
-                        sound.playButtonClick();
-                        setTargetUsername(p.username);
-                      }}
-                      className={`p-2 rounded-xl text-left border transition-all cursor-pointer ${
-                        targetUsername.toLowerCase() === p.username.toLowerCase()
-                          ? "bg-amber-500/20 border-amber-400 text-amber-300 font-bold"
-                          : "bg-neutral-950 border-neutral-800 text-neutral-400 hover:text-white"
-                      }`}
-                    >
-                      <div className="text-xs font-mono font-bold truncate">@{p.username}</div>
-                      <div className="text-[9px] text-neutral-500 flex justify-between">
-                        <span>Win: {p.winRate}</span>
-                        <span>{p.level}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+                {/* Quick Select Real Online Players Chips */}
+                {realPlayers.length > 0 && (
+                  <div className="grid grid-cols-3 gap-1.5 mb-2">
+                    {realPlayers.slice(0, 6).map((p) => (
+                      <button
+                        key={p.userId || p.username}
+                        type="button"
+                        onClick={() => {
+                          sound.playButtonClick();
+                          setTargetUsername(p.username);
+                        }}
+                        className={`p-2 rounded-xl text-left border transition-all cursor-pointer ${
+                          targetUsername.toLowerCase() === p.username.toLowerCase()
+                            ? "bg-amber-500/20 border-amber-400 text-amber-300 font-bold"
+                            : "bg-neutral-950 border-neutral-800 text-neutral-400 hover:text-white"
+                        }`}
+                      >
+                        <div className="text-xs font-mono font-bold truncate">@{p.username}</div>
+                        <div className="text-[9px] text-neutral-500 flex justify-between">
+                          <span>{p.gamesPlayed || 0} gms</span>
+                          <span>{p.vipTier || "Standard"}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 {/* Custom Username Input */}
                 <div className="relative">

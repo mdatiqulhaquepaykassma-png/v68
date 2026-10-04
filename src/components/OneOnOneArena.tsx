@@ -34,8 +34,9 @@ import { sound } from "../utils/audio";
 import { getActiveCurrencySymbol, formatCurrency } from "../utils/currency";
 
 interface OneOnOneArenaProps {
-  user: UserWallet;
+  user: UserWallet | null;
   onUpdateWallet: (updatedUser: UserWallet) => void;
+  onRequireLogin?: () => void;
 }
 
 interface DuelState {
@@ -104,7 +105,7 @@ const VOICE_TAUNTS = [
 
 const EMOTES = ["😎", "🤔", "😱", "🔥", "💀", "🤣", "👀", "🎉"];
 
-export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWallet }) => {
+export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWallet, onRequireLogin }) => {
   const [activeMode, setActiveMode] = useState<"lobby" | "in_match" | "spectate">("lobby");
   const [queueTier, setQueueTier] = useState<"Express" | "Classic" | "VIP">("Classic");
   const [isSearching, setIsSearching] = useState<boolean>(false);
@@ -233,7 +234,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
     fetchChat();
     const interval = setInterval(fetchChat, 1500);
     return () => clearInterval(interval);
-  }, [user.username]);
+  }, [user?.username]);
 
   // Card Squeezing & Peeling tactile spring hook
   useEffect(() => {
@@ -251,7 +252,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
               fetch(`/api/rooms/duel/${duel.matchId}/peek`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ userId: user.userId }),
+                body: JSON.stringify({ userId: user?.userId || "guest" }),
               }).catch(() => {});
             }
             
@@ -277,7 +278,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
       }, 40);
     }
     return () => clearInterval(interval);
-  }, [isPressingCard, isPeeked, squeezePercent, duel?.matchId, user.userId]);
+  }, [isPressingCard, isPeeked, squeezePercent, duel?.matchId, user?.userId]);
 
   // Stateful Multi-User Duel Polling Loop
   useEffect(() => {
@@ -286,7 +287,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
     let isMounted = true;
     const pollState = async () => {
       try {
-        const res = await fetch(`/api/rooms/duel/${duel.matchId}?userId=${user.userId}`);
+        const res = await fetch(`/api/rooms/duel/${duel.matchId}?userId=${user?.userId || "guest"}`);
         if (res.ok) {
           const serverDuel = await res.json();
           if (!isMounted) return;
@@ -294,14 +295,14 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
           setDuel((prev) => {
             if (!prev) return null;
             
-            const isCreator = user.userId === serverDuel.creatorId;
+            const isCreator = user ? user.userId === serverDuel.creatorId : false;
             
-            // Map player roles
+            // Map player roles with authentic win rates
             const dragonPlayer = {
               userId: serverDuel.creatorRole === "DRAGON" ? serverDuel.creatorId : serverDuel.acceptorId,
               username: serverDuel.creatorRole === "DRAGON" ? serverDuel.creatorName : serverDuel.acceptorName,
               eloRank: serverDuel.creatorRole === "DRAGON" ? serverDuel.creatorElo : serverDuel.acceptorElo,
-              winRate: 58,
+              winRate: serverDuel.creatorRole === "DRAGON" ? (serverDuel.creatorWinRate ?? 0) : (serverDuel.acceptorWinRate ?? 0),
               card: serverDuel.creatorRole === "DRAGON" ? serverDuel.creatorCard : serverDuel.acceptorCard,
               currentBet: serverDuel.creatorRole === "DRAGON" ? serverDuel.creatorBet : serverDuel.acceptorBet,
               action: serverDuel.creatorRole === "DRAGON" ? serverDuel.creatorAction : serverDuel.acceptorAction,
@@ -312,7 +313,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
               userId: serverDuel.creatorRole === "TIGER" ? serverDuel.creatorId : serverDuel.acceptorId,
               username: serverDuel.creatorRole === "TIGER" ? serverDuel.creatorName : serverDuel.acceptorName,
               eloRank: serverDuel.creatorRole === "TIGER" ? serverDuel.creatorElo : serverDuel.acceptorElo,
-              winRate: 54,
+              winRate: serverDuel.creatorRole === "TIGER" ? (serverDuel.creatorWinRate ?? 0) : (serverDuel.acceptorWinRate ?? 0),
               card: serverDuel.creatorRole === "TIGER" ? serverDuel.creatorCard : serverDuel.acceptorCard,
               currentBet: serverDuel.creatorRole === "TIGER" ? serverDuel.creatorBet : serverDuel.acceptorBet,
               action: serverDuel.creatorRole === "TIGER" ? serverDuel.creatorAction : serverDuel.acceptorAction,
@@ -331,38 +332,22 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
                 sound.speak("Showdown! Revealing cards...");
               } else if (serverDuel.status === "SETTLED") {
                 // Instantly sync wallet
-                fetch(`/api/wallet/${user.userId}`)
-                  .then((r) => r.json())
-                  .then((updated) => onUpdateWallet(updated))
-                  .catch(() => {});
+                if (user?.userId) {
+                  fetch(`/api/wallet/${user.userId}`)
+                    .then((r) => r.json())
+                    .then((updated) => onUpdateWallet(updated))
+                    .catch(() => {});
+                }
               }
             }
             
-            // Track opponent actions to play chip clink & custom speech bubble taunts
+            // Track opponent actions to play chip clink
             const oppRole = prev.userRole === "DRAGON" ? "TIGER" : "DRAGON";
             const prevOppAction = oppRole === "DRAGON" ? prev.dragonPlayer.action : prev.tigerPlayer.action;
             const nextOppAction = oppRole === "DRAGON" ? dragonPlayer.action : tigerPlayer.action;
-            const oppName = oppRole === "DRAGON" ? dragonPlayer.username : tigerPlayer.username;
             
             if (prevOppAction !== nextOppAction && nextOppAction) {
               sound.playChip();
-              let tauntText = "";
-              if (nextOppAction === "RAISE") {
-                tauntText = "ডাবল বাড়ালাম! দেখি আপনার সাহস কত!";
-              } else if (nextOppAction === "CALL") {
-                tauntText = "কল দিলাম! শেষ পর্যন্ত খেলবো!";
-              } else if (nextOppAction === "CHECK") {
-                tauntText = "চেক দিলাম ভাই, আপনার চাল দিন...";
-              } else if (nextOppAction === "ALL_IN") {
-                tauntText = "অল-ইন মারলাম! কল দেওয়ার দম আছে?";
-              } else if (nextOppAction === "FOLD") {
-                tauntText = "ফোল্ড দিলাম! ভালো খেলেছেন ভাই...";
-              }
-              if (tauntText) {
-                setOpponentSpeechBubble(tauntText);
-                sound.speak(`${oppName} says ${tauntText}`);
-                setTimeout(() => setOpponentSpeechBubble(null), 4000);
-              }
             }
             
             return {
@@ -378,6 +363,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
               turnUser: serverDuel.turnUser,
               secondsRemaining: serverDuel.secondsRemaining,
               raisesCount: serverDuel.raisesCount,
+              spectatorsCount: typeof serverDuel.spectatorsCount === "number" ? serverDuel.spectatorsCount : 0,
               winnerRole: serverDuel.winnerRole,
               foldWinnerRole: serverDuel.foldWinnerRole,
               netProfit: prev.userRole === "DRAGON" ? serverDuel.netProfitCreator : serverDuel.netProfitAcceptor,
@@ -395,7 +381,69 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
       isMounted = false;
       clearInterval(interval);
     };
-  }, [activeMode, duel?.matchId, user.userId]);
+  }, [activeMode, duel?.matchId, user?.userId]);
+
+  // Real-time Duel WebSocket Spectator Connection & Authentic Opponent Chat
+  useEffect(() => {
+    if (activeMode !== "in_match" || !duel?.matchId) return;
+
+    let socket: WebSocket | null = null;
+    let isMounted = true;
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+
+    try {
+      socket = new WebSocket(`${protocol}//${window.location.host}`);
+
+      socket.onopen = () => {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send(
+            JSON.stringify({
+              type: "JOIN_DUEL_ROOM",
+              roomId: duel.matchId,
+              userId: user?.userId || "guest",
+            })
+          );
+        }
+      };
+
+      socket.onmessage = (event) => {
+        if (!isMounted) return;
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "DUEL_SPECTATOR_UPDATE" && data.roomId === duel.matchId) {
+            setDuel((prev) =>
+              prev ? { ...prev, spectatorsCount: data.spectatorsCount || 0 } : null
+            );
+          } else if (data.type === "CHAT_MESSAGE") {
+            const oppRole = duel.userRole === "DRAGON" ? "TIGER" : "DRAGON";
+            const oppName = oppRole === "DRAGON" ? duel.dragonPlayer.username : duel.tigerPlayer.username;
+            if (data.user === oppName && data.text) {
+              setOpponentSpeechBubble(data.text);
+              setTimeout(() => setOpponentSpeechBubble(null), 4500);
+            }
+          }
+        } catch {}
+      };
+    } catch (err) {
+      console.warn("Duel WebSocket error:", err);
+    }
+
+    return () => {
+      isMounted = false;
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        try {
+          socket.send(
+            JSON.stringify({
+              type: "LEAVE_DUEL_ROOM",
+              roomId: duel.matchId,
+              userId: user?.userId || "guest",
+            })
+          );
+          socket.close();
+        } catch {}
+      }
+    };
+  }, [activeMode, duel?.matchId, duel?.userRole, duel?.dragonPlayer.username, duel?.tigerPlayer.username, user?.userId]);
 
   // Fetch open rooms for custom duel challenges
   const fetchRooms = async () => {
@@ -485,6 +533,10 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
   // Private Room Creation Handler
   const handleCreatePersonalChallenge = async () => {
     sound.playButtonClick();
+    if (!user) {
+      onRequireLogin?.();
+      return;
+    }
     setPersonalJoinError("");
     setCreateRoomError("");
     const stakeNum = 1;
@@ -536,6 +588,10 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
   // Private Room Manual Join Handler
   const handleJoinPersonalChallenge = async () => {
     sound.playButtonClick();
+    if (!user) {
+      onRequireLogin?.();
+      return;
+    }
     setPersonalJoinError("");
     
     if (!joinPersonalId.trim()) {
@@ -588,7 +644,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
   const startInteractiveDuel = (match: any, isCreator: boolean) => {
     const ante = match.amount;
     const isDragon = match.choice === "dragon" ? isCreator : !isCreator;
-    const userElo = user.cosmetics?.eloRating || 1250;
+    const userElo = user?.cosmetics?.eloRating || 1250;
 
     setIsBetPlaced(true);
     setIsPeeked(false);
@@ -604,7 +660,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
         userId: match.choice === "dragon" ? match.creatorId : match.acceptorId || "player_2",
         username: match.choice === "dragon" ? match.creatorName : match.acceptorName || "Opponent",
         eloRank: userElo,
-        winRate: 0,
+        winRate: match.creatorWinRate !== undefined ? (match.choice === "dragon" ? match.creatorWinRate : match.acceptorWinRate || 0) : 0,
         card: match.dragonCard,
         currentBet: ante,
         isUser: isCreator ? match.choice === "dragon" : match.choice !== "dragon",
@@ -613,7 +669,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
         userId: match.choice === "tiger" ? match.creatorId : match.acceptorId || "player_2",
         username: match.choice === "tiger" ? match.creatorName : match.acceptorName || "Opponent",
         eloRank: userElo,
-        winRate: 0,
+        winRate: match.acceptorWinRate !== undefined ? (match.choice === "tiger" ? match.creatorWinRate : match.acceptorWinRate || 0) : 0,
         card: match.tigerCard,
         currentBet: match.acceptorAmount || ante,
         isUser: isCreator ? match.choice === "tiger" : match.choice !== "tiger",
@@ -628,7 +684,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
       turnUser: "DRAGON",
       secondsRemaining: 60,
       raisesCount: 0,
-      spectatorsCount: Math.floor(Math.random() * 12) + 5,
+      spectatorsCount: typeof match.spectatorsCount === "number" ? match.spectatorsCount : 0,
       winnerRole: match.winner.toUpperCase() as "DRAGON" | "TIGER" | "TIE",
     };
 
@@ -653,13 +709,15 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
             if (match && match.status === "matched") {
               setIsSearching(false);
               setCreatedRoomId(null);
-              const isCreator = match.creatorId === user.userId;
+              const isCreator = user ? match.creatorId === user.userId : false;
               startInteractiveDuel(match, isCreator);
 
-              fetch(`/api/wallet/${user.userId}`)
-                .then((r) => r.json())
-                .then((updated) => onUpdateWallet(updated))
-                .catch(() => {});
+              if (user?.userId) {
+                fetch(`/api/wallet/${user.userId}`)
+                  .then((r) => r.json())
+                  .then((updated) => onUpdateWallet(updated))
+                  .catch(() => {});
+              }
             }
           }
         }
@@ -670,11 +728,15 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
 
     const interval = setInterval(checkStatus, 1500);
     return () => clearInterval(interval);
-  }, [createdRoomId, isSearching, user.userId, queueTier]);
+  }, [createdRoomId, isSearching, user?.userId, queueTier]);
 
   // Handle Find Match Trigger - Instant entry to game table without waiting
   const handleStartMatchmaking = async (tier: "Express" | "Classic" | "VIP") => {
     sound.playButtonClick();
+    if (!user) {
+      onRequireLogin?.();
+      return;
+    }
     setQueueTier(tier);
     const ante = tier === "Express" ? 100 : tier === "Classic" ? 500 : 2000;
 
@@ -722,6 +784,10 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
   };
 
   const handleCancelMatchmaking = async () => {
+    if (!user) {
+      onRequireLogin?.();
+      return;
+    }
     if (createdRoomId) {
       try {
         const res = await fetch("/api/rooms/cancel", {
@@ -744,6 +810,10 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
 
   const handleAcceptRealChallenge = async (roomId: string) => {
     sound.playButtonClick();
+    if (!user) {
+      onRequireLogin?.();
+      return;
+    }
     try {
       const res = await fetch("/api/rooms/accept", {
         method: "POST",
@@ -802,6 +872,10 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
 
   // Handle Poker Betting Action - STATEFUL MULTIPLAYER SERVER COMMAND
   const handleBettingAction = async (action: "CHECK" | "CALL" | "RAISE_2X" | "RAISE_3X" | "ALL_IN" | "FOLD") => {
+    if (!user) {
+      onRequireLogin?.();
+      return;
+    }
     if (!duel || duel.status !== "BETTING") return;
     sound.playButtonClick();
 
@@ -829,6 +903,10 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
 
   // Handle Voice Taunt trigger
   const handleSendTaunt = async (taunt: typeof VOICE_TAUNTS[0]) => {
+    if (!user) {
+      onRequireLogin?.();
+      return;
+    }
     sound.playButtonClick();
     if (sound.voiceEnabled) {
       sound.speak(taunt.audioText);
@@ -864,6 +942,10 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
   // Handle Send Text Message - POST TO GLOBAL SYNC CHAT
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      onRequireLogin?.();
+      return;
+    }
     if (!chatInput.trim()) return;
     const text = chatInput.trim();
     setChatInput("");
@@ -912,7 +994,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
                   <div className="text-[8px] uppercase text-neutral-500 font-bold">Rating</div>
                   <div className="text-xs sm:text-sm font-black text-amber-400 flex items-center justify-center gap-1">
                     <Trophy className="w-3 h-3 text-amber-400" />
-                    <span>{user.cosmetics?.eloRating || 1250}</span>
+                    <span>{user?.cosmetics?.eloRating || 1250}</span>
                   </div>
                 </div>
                 <div className="w-px h-5 bg-white/10" />
@@ -920,7 +1002,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
                   <div className="text-[8px] uppercase text-neutral-500 font-bold">Played</div>
                   <div className="text-xs sm:text-sm font-black text-emerald-400 flex items-center justify-center gap-1">
                     <Swords className="w-3 h-3 text-emerald-400" />
-                    <span>{user.gamesPlayed || 0}</span>
+                    <span>{user?.gamesPlayed || 0}</span>
                   </div>
                 </div>
               </div>
@@ -1119,7 +1201,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
                     {rooms
                       .filter((r) => r.status === "open")
                       .map((room) => {
-                        const isMyRoom = room.creatorId === user.userId;
+                        const isMyRoom = user ? room.creatorId === user.userId : false;
                         return (
                           <div
                             key={room.id}
@@ -1161,6 +1243,10 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
                                 onClick={async (e) => {
                                   e.stopPropagation();
                                   sound.playButtonClick();
+                                  if (!user) {
+                                    onRequireLogin?.();
+                                    return;
+                                  }
                                   try {
                                     const res = await fetch("/api/rooms/cancel", {
                                       method: "POST",
@@ -1262,7 +1348,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
                       </thead>
                       <tbody className="divide-y divide-neutral-850">
                         {historyRooms.map((hr) => {
-                          const isCreator = hr.creatorId === user.userId;
+                          const isCreator = user ? hr.creatorId === user.userId : false;
                           const opponentName = isCreator ? hr.acceptorName || "Wait for Friend" : hr.creatorName;
                           const winStatus = hr.status === "completed" && hr.winner
                             ? (hr.winner === "tie" ? "TIE" : (isCreator && hr.choice === hr.winner ? "WON" : (!isCreator && hr.choice !== hr.winner ? "WON" : "LOST")))
@@ -1363,7 +1449,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
 
             <div className="overflow-y-auto pr-1 space-y-4 custom-scrollbar flex-1">
             {!personalCreatedRoom ? (
-              rooms.some((r) => r.creatorId === user.userId && r.status === "open") ? (
+              user && rooms.some((r) => r.creatorId === user.userId && r.status === "open") ? (
                 <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl space-y-3 text-center">
                   <div className="text-2xl">🚫</div>
                   <h4 className="text-xs font-black text-red-400 uppercase tracking-wider">রুম তৈরির সীমা অতিক্রম হয়েছে</h4>
@@ -1412,7 +1498,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
                       <span>Stake: {currencySymbol}1</span>
                     </div>
                     <span className="text-neutral-400 font-mono">
-                      Balance: {currencySymbol}{user.balance.toLocaleString()}
+                      Balance: {currencySymbol}{user ? user.balance.toLocaleString() : "0"}
                     </span>
                   </div>
 
@@ -1498,7 +1584,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
                               roomId: personalCreatedRoom.id,
-                              userId: user.userId,
+                              userId: user?.userId,
                               newPassword: newRoomPassword.trim(),
                             }),
                           });
@@ -1652,7 +1738,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
               </div>
             </div>
 
-            {selectedRoomDetails.creatorId === user.userId ? (
+            {selectedRoomDetails.creatorId === user?.userId ? (
               <div className="space-y-3">
                 <div className="space-y-3 bg-neutral-950 p-3 rounded-xl border border-neutral-800">
                   <label className="block text-[10px] uppercase font-bold text-neutral-400">রুমের পাসওয়ার্ড পরিবর্তন করুন</label>
@@ -1678,7 +1764,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
                               roomId: selectedRoomDetails.id,
-                              userId: user.userId,
+                              userId: user?.userId,
                               newPassword: newRoomPassword.trim(),
                             }),
                           });
@@ -1766,7 +1852,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
             </div>
 
             <div className="space-y-4">
-              {waitingRoomData && waitingRoomData.creatorId === user.userId ? (
+              {waitingRoomData && waitingRoomData.creatorId === user?.userId ? (
                 // Creator Waiting UI
                 <div className="space-y-6 text-center py-4">
                   <div className="relative inline-block">
@@ -1931,9 +2017,9 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
               </div>
             )}
 
-            {/* Spectator Count */}
+            {/* Real Live Spectator Count */}
             <div className="hidden sm:flex items-center gap-2 bg-neutral-950/80 px-3 py-1 rounded-full border border-neutral-800 text-xs text-neutral-400">
-              <Eye className="w-4 h-4 text-emerald-400 animate-pulse" />
+              <Eye className={`w-4 h-4 ${duel.spectatorsCount > 0 ? "text-emerald-400 animate-pulse" : "text-neutral-500"}`} />
               <span>{duel.spectatorsCount} live</span>
             </div>
 

@@ -41,7 +41,8 @@ import { BrandLogo } from "./BrandLogo";
 interface SideNavDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  user: UserWallet;
+  user: UserWallet | null;
+  onOpenLogin?: () => void;
   activeTab: "game" | "p2p" | "leaderboard";
   setActiveTab: (tab: "game" | "p2p" | "leaderboard") => void;
   soundEnabled: boolean;
@@ -81,6 +82,7 @@ export const SideNavDrawer: React.FC<SideNavDrawerProps> = ({
   isOpen,
   onClose,
   user,
+  onOpenLogin,
   activeTab,
   setActiveTab,
   soundEnabled,
@@ -148,7 +150,7 @@ export const SideNavDrawer: React.FC<SideNavDrawerProps> = ({
                   {lang === "bn" ? "ক্যাসিনো মেনু" : "Menu & Settings"}
                 </h2>
                 <p className="text-[9px] sm:text-[10px] text-neutral-400 font-mono truncate max-w-[120px]">
-                  {user.username}
+                  {user ? user.username : (lang === "bn" ? "অতিথি প্লেয়ার" : "Guest Player")}
                 </p>
               </div>
             </div>
@@ -157,35 +159,58 @@ export const SideNavDrawer: React.FC<SideNavDrawerProps> = ({
           {/* Drawer Body with extra bottom padding so nothing is hidden */}
           <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-4 pb-32 sm:pb-20 space-y-3 sm:space-y-4">
 
-            {/* BALANCE MODE SWITCHER CARD */}
-            <div className="bg-gradient-to-r from-neutral-900 via-[#131926] to-neutral-900 border border-amber-500/30 rounded-2xl p-3 flex items-center justify-between gap-2 shadow-xl">
-              <div>
-                <div className="text-[9px] sm:text-[10px] text-neutral-400 font-bold uppercase tracking-wider">
-                  {lang === "bn" ? "সক্রিয় মোড" : "Mode"}
+            {/* GUEST BANNER OR BALANCE MODE SWITCHER CARD */}
+            {!user ? (
+              <div className="bg-gradient-to-r from-amber-500/15 via-[#131926] to-amber-500/15 border border-amber-500/40 rounded-2xl p-3.5 space-y-2.5 shadow-xl text-center">
+                <div className="text-xs font-bold text-white">
+                  {lang === "bn" ? "আপনি অতিথি হিসেবে আছেন" : "You are browsing as Guest"}
                 </div>
-                <div className="text-[11px] sm:text-xs font-black text-white mt-0.5 flex items-center gap-1.5 font-mono truncate">
-                  <span>
-                    {user.balanceType === "real"
-                      ? `🟢 ৳${user.balance.toLocaleString()}`
-                      : `🟣 ৳${user.demoBalance.toLocaleString()}`}
-                  </span>
-                </div>
-              </div>
-
-              {onToggleBalanceType && (
+                <p className="text-[10px] text-neutral-400">
+                  {lang === "bn"
+                    ? "আসল টাকা বা ডেমো দিয়ে বেট ধরতে লগইন করুন।"
+                    : "Log in to place bets with real chips or demo balance."}
+                </p>
                 <button
                   type="button"
-                  onClick={onToggleBalanceType}
-                  className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl text-[9px] sm:text-xs font-black uppercase flex items-center gap-1 shadow-md active:scale-95 transition-all cursor-pointer ${
-                    user.balanceType === "real"
-                      ? "bg-amber-500 text-neutral-950 hover:bg-amber-400"
-                      : "bg-purple-600 text-white hover:bg-purple-500"
-                  }`}
+                  onClick={() => {
+                    onClose();
+                    onOpenLogin?.();
+                  }}
+                  className="w-full py-2 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-neutral-950 font-black text-xs rounded-xl shadow-md cursor-pointer active:scale-95 transition-all"
                 >
-                  <span>{user.balanceType === "real" ? "Real ⇄ Demo" : "Demo ⇄ Real"}</span>
+                  {lang === "bn" ? "লগইন / রেজিস্টার করুন" : "Login / Register"}
                 </button>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="bg-gradient-to-r from-neutral-900 via-[#131926] to-neutral-900 border border-amber-500/30 rounded-2xl p-3 flex items-center justify-between gap-2 shadow-xl">
+                <div>
+                  <div className="text-[9px] sm:text-[10px] text-neutral-400 font-bold uppercase tracking-wider">
+                    {lang === "bn" ? "সক্রিয় মোড" : "Mode"}
+                  </div>
+                  <div className="text-[11px] sm:text-xs font-black text-white mt-0.5 flex items-center gap-1.5 font-mono truncate">
+                    <span>
+                      {user.balanceType === "real"
+                        ? `🟢 ৳${user.balance.toLocaleString()}`
+                        : `🟣 ৳${user.demoBalance.toLocaleString()}`}
+                    </span>
+                  </div>
+                </div>
+
+                {onToggleBalanceType && (
+                  <button
+                    type="button"
+                    onClick={onToggleBalanceType}
+                    className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl text-[9px] sm:text-xs font-black uppercase flex items-center gap-1 shadow-md active:scale-95 transition-all cursor-pointer ${
+                      user.balanceType === "real"
+                        ? "bg-amber-500 text-neutral-950 hover:bg-amber-400"
+                        : "bg-purple-600 text-white hover:bg-purple-500"
+                    }`}
+                  >
+                    <span>{user.balanceType === "real" ? "Real ⇄ Demo" : "Demo ⇄ Real"}</span>
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* LIVE DEALER DIV (MOVED FROM HOME PAGE) */}
             <div className="bg-[#121826] border border-amber-500/20 rounded-2xl p-3.5 space-y-3 shadow-xl">
@@ -682,20 +707,22 @@ export const SideNavDrawer: React.FC<SideNavDrawerProps> = ({
               )}
 
               <div className="flex items-center gap-2">
-                <button
-                  onClick={onToggleBalanceType}
-                  className="flex-1 py-2 px-3 rounded-xl bg-[#141A26] hover:bg-[#1A2232] border border-amber-500/30 text-xs font-bold text-amber-300 flex items-center justify-center gap-2 transition-colors"
-                >
-                  <span>{user.balanceType === "real" ? "🟢 Real Mode" : "🟣 Demo Mode"}</span>
-                </button>
+                {user && (
+                  <button
+                    onClick={onToggleBalanceType}
+                    className="flex-1 py-2 px-3 rounded-xl bg-[#141A26] hover:bg-[#1A2232] border border-amber-500/30 text-xs font-bold text-amber-300 flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <span>{user.balanceType === "real" ? "🟢 Real Mode" : "🟣 Demo Mode"}</span>
+                  </button>
+                )}
 
                 {onToggleLang && (
                   <button
                     onClick={onToggleLang}
-                    className="py-2 px-3 rounded-xl bg-[#141A26] hover:bg-[#1A2232] border border-white/10 text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-colors"
+                    className={`${user ? "py-2 px-3" : "w-full py-2.5 px-3"} rounded-xl bg-[#141A26] hover:bg-[#1A2232] border border-white/10 text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer`}
                   >
                     <Globe className="w-3.5 h-3.5 text-amber-400" />
-                    <span>{lang === "bn" ? "EN" : "BN"}</span>
+                    <span>{lang === "bn" ? "English" : "বাংলা"}</span>
                   </button>
                 )}
               </div>
@@ -707,16 +734,28 @@ export const SideNavDrawer: React.FC<SideNavDrawerProps> = ({
                 </span>
               </div>
 
-              <button
-                onClick={() => {
-                  onLogout();
-                  onClose();
-                }}
-                className="w-full py-2.5 px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-xs font-bold text-red-400 flex items-center justify-center gap-2 transition-colors cursor-pointer"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>{lang === "bn" ? "লগআউট করুন" : "Logout"}</span>
-              </button>
+              {user ? (
+                <button
+                  onClick={() => {
+                    onLogout();
+                    onClose();
+                  }}
+                  className="w-full py-2.5 px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-xs font-bold text-red-400 flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>{lang === "bn" ? "লগআউট করুন" : "Logout"}</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    onClose();
+                    onOpenLogin?.();
+                  }}
+                  className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-neutral-950 text-xs font-black flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-md"
+                >
+                  <span>{lang === "bn" ? "লগইন / রেজিস্টার করুন" : "Login / Register"}</span>
+                </button>
+              )}
             </div>
 
           </div>

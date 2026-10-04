@@ -1,6 +1,6 @@
 {
-  "summary":  "Remove all 3D shadows (shadow-2xl, shadow-xl) and glowing reflections from both the card front and card back elements to ensure a clean, shadow-free aesthetic.",
-  "updatedAt":  "2026-10-04T08:09:59.789425089Z",
+  "summary":  "Implementation plan to enable complete guest browsing (view live tables, roadmaps, duels, and leaderboards without logging in) while requiring login for betting, creating/accepting duel challenges, or sending chat messages, with redirection to the dedicated login page.",
+  "updatedAt":  "2026-10-04T08:52:44.621574300Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

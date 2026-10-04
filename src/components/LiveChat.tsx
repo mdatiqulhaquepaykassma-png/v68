@@ -12,9 +12,10 @@ interface ChatMessage {
 interface LiveChatProps {
   username: string;
   onInspectUser?: (username: string) => void;
+  onRequireLogin?: () => void;
 }
 
-export const LiveChat: React.FC<LiveChatProps> = ({ username, onInspectUser }) => {
+export const LiveChat: React.FC<LiveChatProps> = ({ username, onInspectUser, onRequireLogin }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState<string>("");
   const [ws, setWs] = useState<WebSocket | null>(null);
@@ -107,7 +108,13 @@ export const LiveChat: React.FC<LiveChatProps> = ({ username, onInspectUser }) =
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const isGuest = !username || username.toLowerCase().includes("guest");
+
   const handlePingTable = async () => {
+    if (isGuest) {
+      onRequireLogin?.();
+      return;
+    }
     const now = Date.now();
     if (now - lastPingTime < 10000) {
       return; // 10s cooldown
@@ -141,6 +148,10 @@ export const LiveChat: React.FC<LiveChatProps> = ({ username, onInspectUser }) =
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isGuest) {
+      onRequireLogin?.();
+      return;
+    }
     if (!inputText.trim()) return;
 
     const trimmed = inputText.trim();
@@ -246,10 +257,21 @@ export const LiveChat: React.FC<LiveChatProps> = ({ username, onInspectUser }) =
           <input
             type="text"
             value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            placeholder="Write a message..."
+            onChange={(e) => {
+              if (isGuest) {
+                onRequireLogin?.();
+                return;
+              }
+              setInputText(e.target.value);
+            }}
+            onFocus={() => {
+              if (isGuest) {
+                onRequireLogin?.();
+              }
+            }}
+            placeholder={isGuest ? "চ্যাট করতে অনুগ্রহ করে লগইন করুন..." : "Write a message..."}
             maxLength={120}
-            className="w-full bg-white/5 border border-white/5 focus:border-violet-500/40 rounded-2xl py-3 pl-4 pr-12 text-xs text-white placeholder:text-neutral-700 outline-none transition-all"
+            className="w-full bg-white/5 border border-white/5 focus:border-violet-500/40 rounded-2xl py-3 pl-4 pr-12 text-xs text-white placeholder:text-neutral-500 outline-none transition-all"
           />
           <button
             type="submit"

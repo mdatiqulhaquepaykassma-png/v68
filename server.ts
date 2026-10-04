@@ -295,83 +295,9 @@ interface UserCredential {
 
 const userCredentials: Record<string, UserCredential> = {};
 
-const mockUsers: Record<string, UserWallet> = {
-  usr_101: {
-    userId: "usr_101",
-    username: "DragonKing",
-    balance: 85400,
-    demoBalance: 25000,
-    balanceType: "real",
-    lockedBalance: 0,
-    totalWon: 142000,
-    totalLost: 56600,
-    gamesPlayed: 184,
-    kycStatus: "verified",
-    status: "ACTIVE",
-    transactions: [
-      {
-        id: "tx_init_1",
-        type: "deposit",
-        amount: 8000,
-        timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
-        description: "Admin Deposit [Tag: VIP Incentive]: +৳8,000",
-      },
-      {
-        id: "tx_init_1b",
-        type: "deposit",
-        amount: 5000,
-        timestamp: new Date(Date.now() - 86400000 * 2).toISOString(),
-        description: "Admin Deposit [Tag: Welcome Deposit]: +৳5,000",
-      },
-    ],
-  },
-  usr_102: {
-    userId: "usr_102",
-    username: "TigerMaster",
-    balance: 42300,
-    demoBalance: 15000,
-    balanceType: "real",
-    lockedBalance: 0,
-    totalWon: 98000,
-    totalLost: 55700,
-    gamesPlayed: 126,
-    kycStatus: "verified",
-    status: "ACTIVE",
-    transactions: [
-      {
-        id: "tx_init_2",
-        type: "deposit",
-        amount: 2500,
-        timestamp: new Date(Date.now() - 86400000).toISOString(),
-        description: "Admin Deposit [Tag: Manual Deposit Verification]: +৳2,500 (bKash TrxID #8X92K1 verified manually)",
-      },
-    ],
-  },
-  usr_103: {
-    userId: "usr_103",
-    username: "Challenger99",
-    balance: 12000,
-    demoBalance: 10000,
-    balanceType: "real",
-    lockedBalance: 0,
-    totalWon: 34000,
-    totalLost: 22000,
-    gamesPlayed: 48,
-    kycStatus: "pending",
-    status: "ACTIVE",
-    transactions: [
-      {
-        id: "tx_init_3",
-        type: "deposit",
-        amount: 1000,
-        timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
-        description: "Admin Deposit [Tag: Compensation / Refund]: +৳1,000",
-      },
-    ],
-  },
-};
+const mockUsers: Record<string, UserWallet> = {};
 
-// Seed default credentials for pre-configured demo users
+// Helper to seed credentials if needed
 function seedCredential(userId: string, username: string, plainPass: string) {
   const salt = "demosalt";
   const passwordHash = crypto.createHash("sha256").update(plainPass + salt).digest("hex");
@@ -382,221 +308,29 @@ function seedCredential(userId: string, username: string, plainPass: string) {
     salt,
   };
 }
-seedCredential("usr_101", "DragonKing", "123456");
-seedCredential("usr_102", "TigerMaster", "123456");
-seedCredential("usr_103", "Challenger99", "123456");
 
-const userBetHistories: Record<string, UserBetHistoryItem[]> = {
-  usr_101: [
-    {
-      id: "bet_hist_101_1",
-      roundNumber: 1042,
-      tableSlug: "classic",
-      tableName: "Classic High Table",
-      side: "DRAGON",
-      amount: 500,
-      matchedAmount: 500,
-      unmatchedAmount: 0,
-      returnedAmount: 0,
-      payout: 975,
-      netPnL: 475,
-      balanceType: "real",
-      status: "WON",
-      tkReturnStatus: "NONE",
-      timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
-      serverSeedHash: "a8f3b...9d2e",
-      dragonCard: { rank: "K", suit: "♥", value: 13, display: "K♥" },
-      tigerCard: { rank: "7", suit: "♠", value: 7, display: "7♠" },
-      result: "DRAGON",
-    },
-    {
-      id: "bet_hist_101_2",
-      roundNumber: 1041,
-      tableSlug: "classic",
-      tableName: "Classic High Table",
-      side: "TIGER",
-      amount: 1000,
-      matchedAmount: 1000,
-      unmatchedAmount: 0,
-      returnedAmount: 0,
-      payout: 0,
-      netPnL: -1000,
-      balanceType: "real",
-      status: "LOST",
-      tkReturnStatus: "NONE",
-      timestamp: new Date(Date.now() - 3600000 * 2.5).toISOString(),
-      serverSeedHash: "c2e4d...11aa",
-      dragonCard: { rank: "Q", suit: "♦", value: 12, display: "Q♦" },
-      tigerCard: { rank: "4", suit: "♣", value: 4, display: "4♣" },
-      result: "DRAGON",
-    },
-  ],
-  usr_102: [
-    {
-      id: "bet_hist_102_1",
-      roundNumber: 1038,
-      tableSlug: "express",
-      tableName: "Express Speed Arena",
-      side: "TIGER",
-      amount: 200,
-      matchedAmount: 100,
-      unmatchedAmount: 100,
-      returnedAmount: 100,
-      payout: 195,
-      netPnL: 95,
-      balanceType: "real",
-      status: "WON",
-      tkReturnStatus: "RETURNED_REFUND",
-      timestamp: new Date(Date.now() - 86400000).toISOString(),
-      serverSeedHash: "e4c1a...7f8b",
-      dragonCard: { rank: "9", suit: "♣", value: 9, display: "9♣" },
-      tigerCard: { rank: "Q", suit: "♦", value: 12, display: "Q♦" },
-      result: "TIGER",
-    },
-  ],
-  usr_103: [
-    {
-      id: "bet_hist_103_1",
-      roundNumber: 1040,
-      tableSlug: "classic",
-      tableName: "Classic High Table",
-      side: "DRAGON",
-      amount: 500,
-      matchedAmount: 500,
-      unmatchedAmount: 0,
-      returnedAmount: 0,
-      payout: 0,
-      netPnL: -500,
-      balanceType: "real",
-      status: "LOST",
-      tkReturnStatus: "NONE",
-      timestamp: new Date(Date.now() - 3600000 * 6).toISOString(),
-      serverSeedHash: "ff21b...882c",
-      dragonCard: { rank: "3", suit: "♠", value: 3, display: "3♠" },
-      tigerCard: { rank: "10", suit: "♥", value: 10, display: "10♥" },
-      result: "TIGER",
-    },
-  ],
-};
-
-const adminGrants: AdminGrant[] = [
-  {
-    id: "grant_init_1",
-    userId: "usr_101",
-    username: "DragonKing",
-    amount: 5000,
-    tag: "Welcome Deposit",
-    reason: "VIP player manual onboarding credit",
-    adminUsername: "admin",
-    timestamp: new Date(Date.now() - 86400000 * 2).toISOString(),
-    isDemo: false,
-  },
-  {
-    id: "grant_init_2",
-    userId: "usr_102",
-    username: "TigerMaster",
-    amount: 2500,
-    tag: "Manual Deposit Verification",
-    reason: "bKash TrxID #8X92K1 verified manually",
-    adminUsername: "admin",
-    timestamp: new Date(Date.now() - 86400000 * 1).toISOString(),
-    isDemo: false,
-  },
-  {
-    id: "grant_init_3",
-    userId: "usr_103",
-    username: "Challenger99",
-    amount: 1000,
-    tag: "Compensation / Refund",
-    reason: "Network disconnect during high-stake duel refund",
-    adminUsername: "admin",
-    timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
-    isDemo: false,
-  },
-  {
-    id: "grant_init_4",
-    userId: "usr_101",
-    username: "DragonKing",
-    amount: 3000,
-    tag: "VIP Incentive",
-    reason: "Weekly leaderboard volume incentive",
-    adminUsername: "admin",
-    timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
-    isDemo: false,
-  },
-];
-
+const userBetHistories: Record<string, UserBetHistoryItem[]> = {};
+const adminGrants: AdminGrant[] = [];
 const userActivityLogs: Record<string, UserActivityLog[]> = {};
+const playerReports: PlayerReport[] = [];
+const roundDisputes: RoundDispute[] = [];
 
-const playerReports: PlayerReport[] = [
-  {
-    id: "rep_init_1",
-    reporterUserId: "usr_101",
-    reporterUsername: "DragonKing",
-    reportedUserId: "usr_103",
-    reportedUsername: "Challenger99",
-    reason: "Cheating",
-    details: "Abnormally fast betting speed during high stake duel.",
-    timestamp: new Date(Date.now() - 3600000 * 4).toISOString(),
-    status: "PENDING",
-  },
-  {
-    id: "rep_init_2",
-    reporterUserId: "usr_102",
-    reporterUsername: "TigerMaster",
-    reportedUserId: "usr_103",
-    reportedUsername: "Challenger99",
-    reason: "Harassment",
-    details: "Inappropriate language in live table chat room.",
-    timestamp: new Date(Date.now() - 86400000 * 2).toISOString(),
-    status: "INVESTIGATED",
-  },
-];
+// ============================================================================
+// REAL-TIME DUEL LIVE SPECTATORS REGISTRY
+// ============================================================================
+const duelRoomSpectators: Record<string, Set<string>> = {};
 
-const roundDisputes: RoundDispute[] = [
-  {
-    id: "disp_init_1",
-    userId: "usr_101",
-    username: "DragonKing",
-    roundNumber: 1042,
-    tableSlug: "classic",
-    tableName: "Classic High Table",
-    betAmount: 500,
-    side: "DRAGON",
-    issueType: "Lag / Disconnect",
-    description: "Network connection dropped right as round settled. Requesting verification and refund.",
-    status: "PENDING",
-    timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
-    roundDetails: {
-      dragonCard: "K♥",
-      tigerCard: "7♠",
-      result: "DRAGON",
-      serverSeedHash: "a8f3b...9d2e",
-    },
-  },
-  {
-    id: "disp_init_2",
-    userId: "usr_102",
-    username: "TigerMaster",
-    roundNumber: 1038,
-    tableSlug: "express",
-    tableName: "Express Speed Arena",
-    betAmount: 200,
-    side: "TIGER",
-    issueType: "Unmatched Bet Refund",
-    description: "Partial match of ৳100 occurred, remaining ৳100 refund confirmation check.",
-    status: "RESOLVED_VALID",
-    adminNotes: "Auto-refund of ৳100 verified on ledger. Transaction TX #9918 valid.",
-    timestamp: new Date(Date.now() - 86400000).toISOString(),
-    resolvedAt: new Date(Date.now() - 43200000).toISOString(),
-    roundDetails: {
-      dragonCard: "9♣",
-      tigerCard: "Q♦",
-      result: "TIGER",
-      serverSeedHash: "e4c1a...7f8b",
-    },
-  },
-];
+function getDuelSpectatorsCount(roomId: string, creatorId?: string, acceptorId?: string): number {
+  const set = duelRoomSpectators[roomId];
+  if (!set || set.size === 0) return 0;
+  let count = 0;
+  set.forEach((id) => {
+    if (id !== creatorId && id !== acceptorId) {
+      count++;
+    }
+  });
+  return count;
+}
 
 function logUserActivity(userId: string, username: string, action: string, details: string, ipAddress?: string): UserActivityLog {
   if (!userActivityLogs[userId]) {
@@ -848,6 +582,7 @@ interface ActiveDuel {
   creatorAction?: string;
   creatorPeeked: boolean;
   creatorElo: number;
+  creatorWinRate?: number;
   
   acceptorId: string;
   acceptorName: string;
@@ -857,6 +592,7 @@ interface ActiveDuel {
   acceptorAction?: string;
   acceptorPeeked: boolean;
   acceptorElo: number;
+  acceptorWinRate?: number;
   
   currentPot: number;
   currentRaise: number;
@@ -868,6 +604,7 @@ interface ActiveDuel {
   foldWinnerRole?: "DRAGON" | "TIGER";
   netProfitCreator?: number;
   netProfitAcceptor?: number;
+  spectatorsCount?: number;
   lastUpdated: number;
 }
 
@@ -1608,6 +1345,32 @@ wss.on("connection", (ws) => {
         (ws as any).sessionId = session.sessionId;
         return;
       }
+      if (data.type === "JOIN_DUEL_ROOM") {
+        const { roomId, userId } = data;
+        if (roomId && userId) {
+          (ws as any).activeDuelRoomId = roomId;
+          (ws as any).userId = userId;
+          if (!duelRoomSpectators[roomId]) {
+            duelRoomSpectators[roomId] = new Set();
+          }
+          duelRoomSpectators[roomId].add(userId);
+          const duel = activeDuels[roomId];
+          const count = getDuelSpectatorsCount(roomId, duel?.creatorId, duel?.acceptorId);
+          broadcast({ type: "DUEL_SPECTATOR_UPDATE", roomId, spectatorsCount: count });
+        }
+        return;
+      }
+      if (data.type === "LEAVE_DUEL_ROOM") {
+        const { roomId, userId } = data;
+        if (roomId && userId && duelRoomSpectators[roomId]) {
+          duelRoomSpectators[roomId].delete(userId);
+          delete (ws as any).activeDuelRoomId;
+          const duel = activeDuels[roomId];
+          const count = getDuelSpectatorsCount(roomId, duel?.creatorId, duel?.acceptorId);
+          broadcast({ type: "DUEL_SPECTATOR_UPDATE", roomId, spectatorsCount: count });
+        }
+        return;
+      }
       if (data.type === "CHAT") {
         const msg: LiveChatMessage = {
           user: data.user || "Player",
@@ -1625,6 +1388,17 @@ wss.on("connection", (ws) => {
       }
     } catch (e) {
       console.error("WS error:", e);
+    }
+  });
+
+  ws.on("close", () => {
+    const roomId = (ws as any).activeDuelRoomId;
+    const userId = (ws as any).userId;
+    if (roomId && userId && duelRoomSpectators[roomId]) {
+      duelRoomSpectators[roomId].delete(userId);
+      const duel = activeDuels[roomId];
+      const count = getDuelSpectatorsCount(roomId, duel?.creatorId, duel?.acceptorId);
+      broadcast({ type: "DUEL_SPECTATOR_UPDATE", roomId, spectatorsCount: count });
     }
   });
 });
@@ -3350,6 +3124,14 @@ app.post("/api/rooms/accept", requireUser, (req, res) => {
   const creatorUser = mockUsers[room.creatorId];
   const creatorElo = creatorUser?.cosmetics?.eloRating || 1200;
   const acceptorElo = acceptor?.cosmetics?.eloRating || 1200;
+  const creatorTotal = (creatorUser?.totalWon || 0) + (creatorUser?.totalLost || 0);
+  const creatorWinRate = (creatorUser?.gamesPlayed || 0) > 0 && creatorTotal > 0
+    ? Math.round(((creatorUser?.totalWon || 0) / creatorTotal) * 100)
+    : 0;
+  const acceptorTotal = (acceptor?.totalWon || 0) + (acceptor?.totalLost || 0);
+  const acceptorWinRate = (acceptor?.gamesPlayed || 0) > 0 && acceptorTotal > 0
+    ? Math.round(((acceptor?.totalWon || 0) / acceptorTotal) * 100)
+    : 0;
 
   // Initialize fully stateful real-time duel state
   activeDuels[roomId] = {
@@ -3363,6 +3145,7 @@ app.post("/api/rooms/accept", requireUser, (req, res) => {
     creatorBet: room.amount,
     creatorPeeked: false,
     creatorElo,
+    creatorWinRate,
     
     acceptorId: userId,
     acceptorName: room.acceptorName || acceptor.username || "Opponent",
@@ -3371,6 +3154,7 @@ app.post("/api/rooms/accept", requireUser, (req, res) => {
     acceptorBet: requiredAcceptorStake,
     acceptorPeeked: false,
     acceptorElo,
+    acceptorWinRate,
     
     currentPot: room.amount + requiredAcceptorStake,
     currentRaise: Math.max(room.amount, requiredAcceptorStake),
@@ -3378,6 +3162,7 @@ app.post("/api/rooms/accept", requireUser, (req, res) => {
     turnUser: "DRAGON",
     secondsRemaining: 60,
     raisesCount: 0,
+    spectatorsCount: getDuelSpectatorsCount(roomId, room.creatorId, userId),
     lastUpdated: Date.now(),
   };
 
@@ -3407,7 +3192,10 @@ app.get("/api/rooms/duel/:roomId", (req, res) => {
     return res.status(404).json({ error: "Active duel not found or expired" });
   }
   
-  const responseState = { ...duel };
+  const responseState = {
+    ...duel,
+    spectatorsCount: getDuelSpectatorsCount(roomId, duel.creatorId, duel.acceptorId),
+  };
   
   // Clean-room card obscurity mapping: Keep opponent card invisible before Showdown
   const isCreator = userId === duel.creatorId;
@@ -3608,16 +3396,19 @@ app.get("/api/rooms/history/:userId", (req, res) => {
   res.json(history);
 });
 
-// 8. Leaderboard
+// 8. Leaderboard - 100% Real Player Rankings Only
 app.get("/api/leaderboard", (req, res) => {
   const list = Object.values(mockUsers)
+    .filter((u) => (u.gamesPlayed || 0) > 0)
     .map((u) => {
+      const netProfit = (u.totalWon || 0) - (u.totalLost || 0);
+      const totalDecided = (u.totalWon || 0) + (u.totalLost || 0);
       return {
         userId: u.userId,
         username: u.username,
         balance: u.balance,
-        profit: u.totalWon - u.totalLost,
-        winRate: u.gamesPlayed > 0 ? Math.round((u.totalWon / (u.totalWon + u.totalLost || 1)) * 100) : 50,
+        profit: netProfit,
+        winRate: u.gamesPlayed > 0 && totalDecided > 0 ? Math.round(((u.totalWon || 0) / totalDecided) * 100) : 0,
         gamesPlayed: u.gamesPlayed,
         vipTier: u.cosmetics?.eloTier || "Standard",
         eloRating: u.cosmetics?.eloRating || 1000,

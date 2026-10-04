@@ -37,6 +37,7 @@ import { ShieldAlert } from "lucide-react";
 export default function App() {
   useRenderTracker("App");
   const [user, setUser] = useState<UserWallet | null>(null);
+  const [authScreenMode, setAuthScreenMode] = useState<"signin" | "signup" | null>(null);
   const [forcedLogoutReason, setForcedLogoutReason] = useState<string | null>(null);
 
   // Screen Wake Lock: Keeps display light always ON while on site
@@ -411,6 +412,7 @@ export default function App() {
 
   const handleLoginSuccess = (loggedInUser: UserWallet) => {
     setUser(loggedInUser);
+    setAuthScreenMode(null);
     localStorage.setItem("dt_user_id", loggedInUser.userId);
     localStorage.setItem("dt_username", loggedInUser.username);
   };
@@ -564,11 +566,13 @@ export default function App() {
     );
   }
 
-  if (!user) {
+  if (authScreenMode) {
     return (
       <LoginScreen
+        initialMode={authScreenMode}
         onLoginSuccess={handleLoginSuccess}
         onOpenInstallApp={handleTriggerInstallApp}
+        onBackAsGuest={() => setAuthScreenMode(null)}
       />
     );
   }
@@ -605,7 +609,13 @@ export default function App() {
 
         {/* Global Keyboard Shortcut Listener */}
         <GlobalShortcuts
-          onOpenWallet={() => setIsWalletOpen(true)}
+          onOpenWallet={() => {
+            if (!user) {
+              setAuthScreenMode("signin");
+            } else {
+              setIsWalletOpen(true);
+            }
+          }}
           onOpenLeaderboard={() => handleTabChange("leaderboard")}
           onOpenGame={() => handleTabChange("game")}
           onOpenP2P={() => handleTabChange("p2p")}
@@ -623,12 +633,26 @@ export default function App() {
           onToggleSound={handleToggleSound}
           voiceEnabled={voiceEnabled}
           onToggleVoice={handleToggleVoice}
-          onOpenWallet={() => setIsWalletOpen(true)}
+          onOpenWallet={() => {
+            if (!user) {
+              setAuthScreenMode("signin");
+            } else {
+              setIsWalletOpen(true);
+            }
+          }}
+          onOpenLogin={() => setAuthScreenMode("signin")}
+          onOpenRegister={() => setAuthScreenMode("signup")}
           onOpenProvablyFair={handleOpenProvablyFair}
           onOpenRoadmap={handleOpenRoadmap}
           onOpenMerchant={() => setIsMerchantOpen(true)}
           onOpenSiteLiquidity={() => setIsLiquidityOpen(true)}
-          onOpenBetHistory={() => setIsBetHistoryOpen(true)}
+          onOpenBetHistory={() => {
+            if (!user) {
+              setAuthScreenMode("signin");
+            } else {
+              setIsBetHistoryOpen(true);
+            }
+          }}
           onOpenRules={() => setIsGameRulesOpen(true)}
           onOpenTransparency={() => {
             setTransparencyTab("charter");
@@ -698,16 +722,35 @@ export default function App() {
                   onUpdateWallet={setUser}
                   onOpenProvablyFair={handleOpenProvablyFair}
                   onOpenRoadmap={handleOpenRoadmap}
-                  onOpenBetHistory={() => setIsBetHistoryOpen(true)}
+                  onOpenBetHistory={() => {
+                    if (!user) {
+                      setAuthScreenMode("signin");
+                    } else {
+                      setIsBetHistoryOpen(true);
+                    }
+                  }}
                   onOpenRules={() => setIsGameRulesOpen(true)}
-                  onOpenProfile={() => setIsProfileOpen(true)}
+                  onOpenProfile={() => {
+                    if (!user) {
+                      setAuthScreenMode("signin");
+                    } else {
+                      setIsProfileOpen(true);
+                    }
+                  }}
                   onToggleBalanceType={handleToggleBalanceType}
                   onNavigateToP2P={() => handleTabChange("p2p")}
+                  onRequireLogin={() => setAuthScreenMode("signin")}
                   lang={lang}
                 />
               </motion.div>
             )}
-            {activeTab === "p2p" && <P2PLobby user={user} onUpdateWallet={setUser} />}
+            {activeTab === "p2p" && (
+              <P2PLobby
+                user={user}
+                onUpdateWallet={setUser}
+                onRequireLogin={() => setAuthScreenMode("signin")}
+              />
+            )}
             {activeTab === "leaderboard" && (
               <Leaderboard
                 onOpenLiquidity={() => setIsLiquidityOpen(true)}
@@ -731,6 +774,10 @@ export default function App() {
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
         user={user}
+        onOpenLogin={() => {
+          setIsMenuOpen(false);
+          setAuthScreenMode("signin");
+        }}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         lang={lang}
@@ -744,11 +791,19 @@ export default function App() {
         onToggleWakeLock={wakeLock.toggleWakeLock}
         onOpenWallet={() => {
           setIsMenuOpen(false);
-          setIsWalletOpen(true);
+          if (!user) {
+            setAuthScreenMode("signin");
+          } else {
+            setIsWalletOpen(true);
+          }
         }}
         onOpenProfile={() => {
           setIsMenuOpen(false);
-          setIsProfileOpen(true);
+          if (!user) {
+            setAuthScreenMode("signin");
+          } else {
+            setIsProfileOpen(true);
+          }
         }}
         onOpenProvablyFair={() => {
           setIsMenuOpen(false);
@@ -774,7 +829,11 @@ export default function App() {
         }}
         onOpenBetHistory={() => {
           setIsMenuOpen(false);
-          setIsBetHistoryOpen(true);
+          if (!user) {
+            setAuthScreenMode("signin");
+          } else {
+            setIsBetHistoryOpen(true);
+          }
         }}
         onOpenSiteLiquidity={() => {
           setIsMenuOpen(false);
@@ -782,7 +841,11 @@ export default function App() {
         }}
         onOpenReferral={() => {
           setIsMenuOpen(false);
-          setIsReferralOpen(true);
+          if (!user) {
+            setAuthScreenMode("signin");
+          } else {
+            setIsReferralOpen(true);
+          }
         }}
         onOpenCurrencySelector={() => {
           setIsMenuOpen(false);
@@ -825,7 +888,7 @@ export default function App() {
 
       {/* MODALS */}
 
-      {isBetHistoryOpen && (
+      {isBetHistoryOpen && user && (
         <UserBetHistoryModal
           user={user}
           isOpen={isBetHistoryOpen}
@@ -857,11 +920,11 @@ export default function App() {
         <SiteLiquidityModal
           isOpen={isLiquidityOpen}
           onClose={() => setIsLiquidityOpen(false)}
-          currentUserId={user.userId}
+          currentUserId={user?.userId || "guest"}
         />
       )}
 
-      {isProfileOpen && (
+      {isProfileOpen && user && (
         <UserProfileModal
           user={user}
           onClose={() => setIsProfileOpen(false)}
@@ -874,7 +937,7 @@ export default function App() {
         />
       )}
 
-      {isWalletOpen && (
+      {isWalletOpen && user && (
         <WalletModal
           user={user}
           onClose={() => setIsWalletOpen(false)}
@@ -915,13 +978,26 @@ export default function App() {
       <MobileBottomNav
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        onOpenWallet={() => setIsWalletOpen(true)}
-        onOpenBetHistory={() => setIsBetHistoryOpen(true)}
+        onOpenWallet={() => {
+          if (!user) {
+            setAuthScreenMode("signin");
+          } else {
+            setIsWalletOpen(true);
+          }
+        }}
+        onOpenBetHistory={() => {
+          if (!user) {
+            setAuthScreenMode("signin");
+          } else {
+            setIsBetHistoryOpen(true);
+          }
+        }}
         onOpenInstallApp={handleTriggerInstallApp}
         isStandalone={isStandalone}
         isInstalled={isInstalled}
         user={user}
         selectedCurrency={selectedCurrency}
+        onOpenLogin={() => setAuthScreenMode("signin")}
       />
 
       {/* Single-Device Force Logout Alert Dialog */}

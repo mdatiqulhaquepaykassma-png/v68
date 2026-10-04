@@ -31,7 +31,7 @@ interface LiveBetTransparencyModalProps {
   currentRoundBets: LiveBetRecord[];
   recentSettledBets: LiveBetRecord[];
   currentRound: TableRound | null;
-  currentUser: UserWallet;
+  currentUser?: UserWallet | null;
   lang?: "bn" | "en";
   formatAmt: (amount: number, compact?: boolean) => string;
   onFollowBet?: (side: "dragon" | "tiger" | "tie", amount: number) => void;
@@ -182,8 +182,8 @@ export const LiveBetTransparencyModal: React.FC<LiveBetTransparencyModalProps> =
       },
       {
         id: "settled_3",
-        userId: currentUser.userId,
-        username: currentUser.username || "You",
+        userId: currentUser?.userId || "u_guest",
+        username: currentUser?.username || "You",
         vipTier: "VIP",
         side: "DRAGON",
         amount: 500,
@@ -271,12 +271,12 @@ export const LiveBetTransparencyModal: React.FC<LiveBetTransparencyModalProps> =
           return false;
         }
       }
-      if (filterSide === "MINE") return b.userId === currentUser.userId;
+      if (filterSide === "MINE") return currentUser ? b.userId === currentUser.userId : false;
       if (filterSide === "WHALES") return b.amount >= 2500;
       if (filterSide !== "ALL") return b.side === filterSide;
       return true;
     });
-  }, [displayLiveBets, filterSide, searchQuery, currentUser.userId]);
+  }, [displayLiveBets, filterSide, searchQuery, currentUser?.userId]);
 
   const filteredSettledBets = useMemo(() => {
     return displaySettledBets.filter((b) => {
@@ -286,12 +286,12 @@ export const LiveBetTransparencyModal: React.FC<LiveBetTransparencyModalProps> =
           return false;
         }
       }
-      if (filterSide === "MINE") return b.userId === currentUser.userId;
+      if (filterSide === "MINE") return currentUser ? b.userId === currentUser.userId : false;
       if (filterSide === "WHALES") return b.amount >= 2500;
       if (filterSide !== "ALL") return b.side === filterSide;
       return true;
     });
-  }, [displaySettledBets, filterSide, searchQuery, currentUser.userId]);
+  }, [displaySettledBets, filterSide, searchQuery, currentUser?.userId]);
 
   const handleCopyId = (id: string) => {
     navigator.clipboard.writeText(id);
@@ -500,7 +500,7 @@ export const LiveBetTransparencyModal: React.FC<LiveBetTransparencyModalProps> =
                     {filteredLiveBets.map((bet) => {
                       const isDragon = bet.side === "DRAGON";
                       const isTiger = bet.side === "TIGER";
-                      const isMe = bet.userId === currentUser.userId;
+                      const isMe = currentUser ? bet.userId === currentUser.userId : false;
 
                       return (
                         <motion.div
@@ -602,7 +602,7 @@ export const LiveBetTransparencyModal: React.FC<LiveBetTransparencyModalProps> =
                     {filteredSettledBets.map((bet) => {
                       const isWin = (bet.payout || 0) > 0 || bet.status === "WON";
                       const isTieRefund = bet.status === "TIE_REFUND" || bet.status === "REFUNDED";
-                      const isMe = bet.userId === currentUser.userId;
+                      const isMe = currentUser ? bet.userId === currentUser.userId : false;
 
                       return (
                         <div

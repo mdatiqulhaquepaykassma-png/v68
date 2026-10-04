@@ -18,7 +18,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { BrandLogo } from "./BrandLogo";
 
 interface NavbarProps {
-  user: UserWallet;
+  user: UserWallet | null;
   activeTab: "game" | "p2p" | "leaderboard";
   setActiveTab: (tab: "game" | "p2p" | "leaderboard") => void;
   selectedTable: "express" | "classic" | "vip";
@@ -29,6 +29,8 @@ interface NavbarProps {
   onToggleVoice?: () => void;
   onOpenWallet: () => void;
   onOpenMenu: () => void;
+  onOpenLogin?: () => void;
+  onOpenRegister?: () => void;
   onOpenInstallApp?: () => void;
   isStandalone?: boolean;
   isInstalled?: boolean;
@@ -70,6 +72,8 @@ export const Navbar = React.memo<NavbarProps>(({
   onOpenWallet,
   onOpenBetHistory,
   onOpenMenu,
+  onOpenLogin,
+  onOpenRegister,
   onOpenInstallApp,
   isStandalone = false,
   selectedCurrency,
@@ -145,7 +149,7 @@ export const Navbar = React.memo<NavbarProps>(({
   ];
 
   const currentTable = tableOptions.find((t) => t.id === selectedTable) || tableOptions[0];
-  const currentBalance = user.balanceType === "real" ? user.balance : user.demoBalance;
+  const currentBalance = user ? (user.balanceType === "real" ? user.balance : user.demoBalance) : 0;
 
   return (
     <header className="bg-neutral-950/95 backdrop-blur-2xl border-b border-white/10 sticky top-0 z-50 px-2 sm:px-4 lg:px-6 py-1.5 sm:py-2 shadow-2xl w-full select-none m-0">
@@ -305,29 +309,48 @@ export const Navbar = React.memo<NavbarProps>(({
             </button>
           )}
 
-          {/* Wallet / Balance Indicator & Quick Deposit (Hidden on Mobile, available in Mobile Bottom Nav) */}
-          <button
-            onClick={onOpenWallet}
-            className="hidden sm:flex items-center gap-1 sm:gap-2 bg-gradient-to-r from-neutral-900 to-neutral-950 border border-amber-500/30 hover:border-amber-400 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl transition-all shadow-inner active:scale-95 group cursor-pointer"
-          >
-            <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
-              <Wallet className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+          {/* Wallet / Balance Indicator for Logged-In Users OR Login/Register for Guests */}
+          {!user ? (
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <button
+                type="button"
+                onClick={onOpenLogin}
+                className="px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs border border-white/15 hover:border-amber-400/50 transition-all cursor-pointer active:scale-95 shadow-sm"
+              >
+                {lang === "bn" ? "লগইন" : "Login"}
+              </button>
+              <button
+                type="button"
+                onClick={onOpenRegister || onOpenLogin}
+                className="px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-neutral-950 font-black text-xs transition-all shadow-md shadow-amber-950/40 cursor-pointer active:scale-95"
+              >
+                {lang === "bn" ? "রেজিস্টার" : "Sign Up"}
+              </button>
             </div>
-            <div className="flex flex-col items-start leading-none">
-              <span className="text-[7px] font-bold text-neutral-400 uppercase tracking-wider hidden xs:inline">
-                {user.balanceType === "real" ? "REAL" : "DEMO"}
-              </span>
-              <span className="text-[10px] sm:text-[11px] font-black text-amber-300 font-mono tracking-tight">
-                {formatCurrency(currentBalance, {
-                  currencyCode: activeCurrencyCode,
-                  convertFromBase: true,
-                })}
-              </span>
-            </div>
-            <div className="w-4 h-4 rounded bg-amber-400 text-neutral-950 flex items-center justify-center shadow ml-0.5">
-              <Plus className="w-3 h-3 stroke-[3]" />
-            </div>
-          </button>
+          ) : (
+            <button
+              onClick={onOpenWallet}
+              className="hidden sm:flex items-center gap-1 sm:gap-2 bg-gradient-to-r from-neutral-900 to-neutral-950 border border-amber-500/30 hover:border-amber-400 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl transition-all shadow-inner active:scale-95 group cursor-pointer"
+            >
+              <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
+                <Wallet className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+              </div>
+              <div className="flex flex-col items-start leading-none">
+                <span className="text-[7px] font-bold text-neutral-400 uppercase tracking-wider hidden xs:inline">
+                  {user.balanceType === "real" ? "REAL" : "DEMO"}
+                </span>
+                <span className="text-[10px] sm:text-[11px] font-black text-amber-300 font-mono tracking-tight">
+                  {formatCurrency(currentBalance, {
+                    currencyCode: activeCurrencyCode,
+                    convertFromBase: true,
+                  })}
+                </span>
+              </div>
+              <div className="w-4 h-4 rounded bg-amber-400 text-neutral-950 flex items-center justify-center shadow ml-0.5">
+                <Plus className="w-3 h-3 stroke-[3]" />
+              </div>
+            </button>
+          )}
 
           {/* Menu Button */}
           <div className="flex items-center gap-1">

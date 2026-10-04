@@ -106,7 +106,7 @@ export const triggerBigWinConfetti = (isMassiveWin: boolean = false) => {
 };
 
 interface GameTableProps {
-  user: UserWallet;
+  user: UserWallet | null;
   selectedTableSlug: "express" | "classic" | "vip";
   onUpdateWallet: (updatedUser: UserWallet) => void;
   onOpenProvablyFair: () => void;
@@ -116,6 +116,7 @@ interface GameTableProps {
   onOpenProfile?: () => void;
   onToggleBalanceType?: () => void;
   onNavigateToP2P?: () => void;
+  onRequireLogin?: () => void;
   lang?: "bn" | "en";
 }
 
@@ -130,6 +131,7 @@ export const GameTable = React.memo<GameTableProps>(({
   onOpenProfile,
   onToggleBalanceType,
   onNavigateToP2P,
+  onRequireLogin,
   lang = "bn",
 }) => {
   useRenderTracker("GameTable");
@@ -476,7 +478,7 @@ export const GameTable = React.memo<GameTableProps>(({
     return () => clearInterval(timer);
   }, []);
 
-  const activeBalance = user.balanceType === "real" ? user.balance : user.demoBalance;
+  const activeBalance = user ? (user.balanceType === "real" ? user.balance : user.demoBalance) : 0;
 
   const [isFullscreen, setIsFullscreen] = useState<boolean>(() => !!document.fullscreenElement);
 
@@ -775,10 +777,12 @@ export const GameTable = React.memo<GameTableProps>(({
             const returnedTotal = Math.max(0, dPool + tPool - mAmount * 2);
             sound.announceMatchingPhase(dPool, tPool, mAmount, returnedTotal);
             // Instantly refresh wallet upon matching so unmatched refunds appear immediately
-            fetch(`/api/wallet/${user.userId}`)
-              .then((r) => r.json())
-              .then((updated) => onUpdateWallet(updated))
-              .catch(() => {});
+            if (user?.userId) {
+              fetch(`/api/wallet/${user.userId}`)
+                .then((r) => r.json())
+                .then((updated) => onUpdateWallet(updated))
+                .catch(() => {});
+            }
           }
         } else if (data.type === "ROUND_DEALING" && data.tableSlug === selectedTableSlug) {
           // Clear any pending dealing timers
@@ -831,7 +835,7 @@ export const GameTable = React.memo<GameTableProps>(({
               if (prev.some((b) => b.id === data.bet.id)) return prev;
               return [data.bet, ...prev].slice(0, 60);
             });
-            if (data.bet.userId === user.userId) {
+            if (user?.userId && data.bet.userId === user.userId) {
               sound.playCoinsClinking();
               sound.playChipStack();
               setIsPlacingBet(null);
@@ -865,7 +869,7 @@ export const GameTable = React.memo<GameTableProps>(({
 
             // Find user's exact bet settlement from the server
             const userSettled = Array.isArray(data.settledBets)
-              ? data.settledBets.find((b: any) => b.userId === user.userId || (activeConfirmedBet && b.id === activeConfirmedBet.id))
+              ? data.settledBets.find((b: any) => (user?.userId && b.userId === user.userId) || (activeConfirmedBet && b.id === activeConfirmedBet.id))
               : null;
 
             if (userSettled) {
@@ -1052,12 +1056,14 @@ export const GameTable = React.memo<GameTableProps>(({
             }, 4500);
           }
 
-          fetch(`/api/wallet/${user.userId}`)
-            .then((r) => r.json())
-            .then((updated) => {
-              onUpdateWallet(updated);
-            })
-            .catch(() => {});
+          if (user?.userId) {
+            fetch(`/api/wallet/${user.userId}`)
+              .then((r) => r.json())
+              .then((updated) => {
+                onUpdateWallet(updated);
+              })
+              .catch(() => {});
+          }
 
           fetch("/api/ai-dealer", {
             method: "POST",
@@ -1094,10 +1100,17 @@ export const GameTable = React.memo<GameTableProps>(({
     };
 
     return () => socket.close();
-  }, [selectedTableSlug, user.userId, activeConfirmedBet]);
+  }, [selectedTableSlug, user?.userId, activeConfirmedBet]);
 
   // Stepper and Chip Selection Handlers - 1-Tap Instant Bet Strike
   const handleSelectSide = (side: string) => {
+    if (!user || !user.userId) {
+      soundManager.playChip(1.2);
+      setSelectedSide(side);
+      showTableToast("বেট ধরতে অনুগ্রহ করে প্রথমে লগইন করুন।");
+      onRequireLogin?.();
+      return;
+    }
     soundManager.playChip(1.2);
     setSelectedSide(side);
     const stakeAmount = selectedAmount > 0 ? selectedAmount : activeLimits.minBet;
@@ -1285,7 +1298,8 @@ export const GameTable = React.memo<GameTableProps>(({
   // Direct 1-Tap Bet Execution
   const executeDirectBet = async (side: string, amount: number) => {
     if (!user || !user.userId) {
-      showTableToast("Every player must be logged in to place a bet. Please log in.");
+      showTableToast("বেট ধরতে অনুগ্রহ করে প্রথমে লগইন করুন।");
+      onRequireLogin?.();
       return;
     }
     if (currentRound && currentRound.status !== "BETTING") {
@@ -1373,7 +1387,7 @@ export const GameTable = React.memo<GameTableProps>(({
 
   // Cancel Active Bet (1-Tap Refund)
   const handleCancelActiveBet = async () => {
-    if (!activeConfirmedBet || cancelingBet) return;
+    if (!user || !activeConfirmedBet || cancelingBet) return;
     setCancelingBet(true);
     try {
       const sid = localStorage.getItem("player_session_id") || "";
@@ -1411,7 +1425,7 @@ export const GameTable = React.memo<GameTableProps>(({
 
   // 1-Tap Demo Balance Reset
   const handleResetDemoBalance = async () => {
-    if (demoResetLoading) return;
+    if (!user || demoResetLoading) return;
     setDemoResetLoading(true);
     try {
       const sid = localStorage.getItem("player_session_id") || "";
@@ -1437,6 +1451,11 @@ export const GameTable = React.memo<GameTableProps>(({
 
   // Quick Action Buttons
   const handleFollowBet = (side: "dragon" | "tiger" | "tie", amount: number) => {
+    if (!user || !user.userId) {
+      showTableToast("বেট ধরতে অনুগ্রহ করে প্রথমে লগইন করুন।");
+      onRequireLogin?.();
+      return;
+    }
     if (side === "tie") {
       showTableToast("Tie-তে বাজি ধরা যায় না। শুধুমাত্র Dragon বা Tiger বেছে নিন।");
       return;
@@ -1449,6 +1468,11 @@ export const GameTable = React.memo<GameTableProps>(({
   };
 
   const handleDoubleBet = () => {
+    if (!user || !user.userId) {
+      showTableToast("বেট ধরতে অনুগ্রহ করে প্রথমে লগইন করুন।");
+      onRequireLogin?.();
+      return;
+    }
     soundManager.playChipStack();
     const doubled = selectedAmount * 2;
     if (doubled > activeLimits.maxBet) {
@@ -1463,6 +1487,11 @@ export const GameTable = React.memo<GameTableProps>(({
   };
 
   const handleRepeatBet = () => {
+    if (!user || !user.userId) {
+      showTableToast("বেট ধরতে অনুগ্রহ করে প্রথমে লগইন করুন।");
+      onRequireLogin?.();
+      return;
+    }
     if (!lastPlacedBet) return;
     if (activeBalance < lastPlacedBet.amount) {
       showTableToast("Insufficient balance to repeat previous bet.");
@@ -1517,7 +1546,7 @@ export const GameTable = React.memo<GameTableProps>(({
   };
 
   // Matched calculation for active bet strictly isolated by balanceType (Real vs Real, Demo vs Demo)
-  const activeBalanceType = user.balanceType || "real";
+  const activeBalanceType = user?.balanceType || "real";
   const sameTypeBets = currentRoundBets.filter(b => (b.balanceType || "real") === activeBalanceType);
   const currentDragonPool = sameTypeBets.length > 0
     ? sameTypeBets.filter(b => b.side === "DRAGON").reduce((sum, b) => sum + b.amount, 0)
@@ -1718,8 +1747,8 @@ export const GameTable = React.memo<GameTableProps>(({
                    ))}
                 </div>
                 <div className="flex-1 overflow-y-auto no-scrollbar">
-                   {sidebarTab === 'liveAction' && <LiveAction currentRoundBets={currentRoundBets} currentUser={user} roundNumber={currentRound?.roundNumber} onFollowBet={handleFollowBet} />}
-                   {sidebarTab === 'chat' && <LiveChat username={user.username} />}
+                   {sidebarTab === 'liveAction' && <LiveAction currentRoundBets={currentRoundBets} currentUser={user || undefined} roundNumber={currentRound?.roundNumber} onFollowBet={handleFollowBet} />}
+                   {sidebarTab === 'chat' && <LiveChat username={user?.username || "Guest"} onRequireLogin={onRequireLogin} />}
                    {sidebarTab === 'roadmap' && (
                      <div className="grid grid-cols-6 gap-2 pt-2">
                         {roadmap.slice(-42).map((r, i) => (

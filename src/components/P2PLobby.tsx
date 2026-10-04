@@ -43,11 +43,12 @@ import { formatCurrency, getStoredCurrencyCode, getActiveCurrencySymbol } from '
 import { PullToRefresh } from './PullToRefresh';
 
 interface P2PLobbyProps {
-  user: UserWallet;
+  user: UserWallet | null;
   onUpdateWallet: (updatedUser: UserWallet) => void;
+  onRequireLogin?: () => void;
 }
 
-export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => {
+export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet, onRequireLogin }) => {
   const [activeP2pTab, setActiveP2pTab] = useState<'arena' | 'custom_lobby'>('arena');
   const [rooms, setRooms] = useState<P2PRoom[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true);
@@ -97,6 +98,7 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
   const [recentMatches, setRecentMatches] = useState<any[]>([]);
 
   const fetchRecentMatches = async () => {
+    if (!user?.userId) return;
     try {
       const res = await fetch(`/api/rooms/history/${user.userId}`);
       if (res.ok) {
@@ -111,6 +113,7 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
   };
 
   useEffect(() => {
+    if (!user?.userId) return;
     let isMounted = true;
     const loadRecentMatches = async () => {
       try {
@@ -132,28 +135,9 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
       isMounted = false;
       clearInterval(interval);
     };
-  }, [user.userId]);
+  }, [user?.userId]);
 
-  const displayRecentMatches = recentMatches.length > 0 ? recentMatches.slice(0, 5) : [
-    {
-      id: 'room_match_01',
-      creatorName: 'DragonKing',
-      acceptorName: user.username || 'You',
-      amount: 1000,
-      acceptorAmount: 1000,
-      winner: 'dragon',
-      timestamp: new Date(Date.now() - 120000).toISOString(),
-    },
-    {
-      id: 'room_match_02',
-      creatorName: user.username || 'You',
-      acceptorName: 'TigerMaster',
-      amount: 500,
-      acceptorAmount: 500,
-      winner: 'tiger',
-      timestamp: new Date(Date.now() - 450000).toISOString(),
-    },
-  ];
+  const displayRecentMatches = recentMatches.length > 0 ? recentMatches.slice(0, 5) : [];
 
   // Notification hook
   const {
@@ -164,7 +148,7 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
     isFavorite,
     activeBanner,
     dismissBanner,
-  } = useNotificationSystem(user.userId);
+  } = useNotificationSystem(user?.userId || "");
 
   // Popular Ratio Presets (Starting from 1 BDT)
   const RATIO_PRESETS = [
@@ -280,7 +264,7 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
 
       socket.onopen = () => {
         if (socket && socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({ type: 'SUBSCRIBE_P2P_LOBBY', userId: user.userId }));
+          socket.send(JSON.stringify({ type: 'SUBSCRIBE_P2P_LOBBY', userId: user?.userId || 'guest' }));
         }
       };
 
@@ -338,7 +322,7 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
       setResolvedRoom(null);
       setBotSpamWarning(null);
     };
-  }, [user.userId]);
+  }, [user?.userId]);
 
   // Live Calculations for Challenge Form
   const numCreatorStake = Math.max(10, Number(amount) || 10);
@@ -367,11 +351,11 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
   // 'Recommended for You' Algorithm:
   // Evaluates player's user balance, games played, and historical stake range to score rooms
   const userAvgStake = useMemo(() => {
-    const balance = user.balance || 500;
+    const balance = user?.balance || 500;
     if (balance > 10000) return 3000;
     if (balance > 3000) return 1000;
     return 300;
-  }, [user.balance]);
+  }, [user?.balance]);
 
   const scoredRooms = useMemo(() => {
     return rooms.map((room) => {
@@ -383,7 +367,7 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
       // Fast action / hot room boost (0 to 30)
       if (room.isFastAction || room.isSingleRoundQuickChallenge) score += 20;
       if (room.isHotRoom || (room.activityScore || 0) >= 70) score += 15;
-      if (room.invitedUsername && room.invitedUsername.toLowerCase() === user.username.toLowerCase()) score += 35;
+      if (room.invitedUsername && user?.username && room.invitedUsername.toLowerCase() === user.username.toLowerCase()) score += 35;
 
       const finalMatchScore = Math.min(99, Math.max(45, score));
       return {
@@ -391,7 +375,7 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
         matchScore: finalMatchScore,
       };
     });
-  }, [rooms, userAvgStake, user.username]);
+  }, [rooms, userAvgStake, user?.username]);
 
   // Filter and Sort rooms
   const filteredRooms = useMemo(() => {
@@ -424,7 +408,7 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
         break;
       case 'friends_only':
         result = result.filter(
-          (r) => r.invitedUsername && r.invitedUsername.toLowerCase() === user.username.toLowerCase()
+          (r) => r.invitedUsername && user?.username && r.invitedUsername.toLowerCase() === user.username.toLowerCase()
         );
         break;
       default:
@@ -432,13 +416,18 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
     }
 
     return result;
-  }, [scoredRooms, searchQuery, filterMode, user.username]);
+  }, [scoredRooms, searchQuery, filterMode, user?.username]);
 
   // Handle Room Creation
   const handleCreateRoom = async (e?: React.FormEvent, isQuick = false) => {
     if (e) e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
+
+    if (!user) {
+      onRequireLogin?.();
+      return;
+    }
 
     const stakeToUse = isQuick ? 250 : numCreatorStake;
     const opponentStakeToUse = isQuick ? 250 : numOpponentStake;
@@ -498,6 +487,10 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
   // Quick Join Button: Automatically matches current user with compatible opponent based on wallet balance & skill level
   const handleQuickJoin = async () => {
     sound.playButtonClick();
+    if (!user) {
+      onRequireLogin?.();
+      return;
+    }
     setErrorMsg('');
     setIsMatchmaking(true);
     setMatchmakingStatusText('Scanning Arena for Available Opponents...');
@@ -544,6 +537,10 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
 
   // Accept / Join Room
   const handleAcceptRoom = async (roomId: string) => {
+    if (!user) {
+      onRequireLogin?.();
+      return;
+    }
     setErrorMsg('');
     setSuccessMsg('');
     setLoading(true);
@@ -598,6 +595,10 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
 
   // Cancel Room with 100% Refund
   const handleCancelRoom = async (roomId: string) => {
+    if (!user) {
+      onRequireLogin?.();
+      return;
+    }
     setErrorMsg('');
     setSuccessMsg('');
     setLoading(true);
@@ -649,6 +650,7 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
       fetchRooms(),
       fetchRecentMatches(),
       (async () => {
+        if (!user?.userId) return;
         try {
           const walletRes = await fetch(`/api/wallet/${user.userId}`);
           if (walletRes.ok) {
@@ -737,7 +739,7 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
       </div>
 
       {activeP2pTab === 'arena' ? (
-        <OneOnOneArena user={user} onUpdateWallet={onUpdateWallet} />
+        <OneOnOneArena user={user} onUpdateWallet={onUpdateWallet} onRequireLogin={onRequireLogin} />
       ) : (
         <>
           {/* Real P2P 5% Rake Transparency & Quick Actions Header */}
@@ -766,7 +768,7 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
             </div>
 
             {/* Incoming Direct Challenges Banner Alert */}
-            {rooms.some((r) => r.status === "open" && r.invitedUsername && r.invitedUsername.toLowerCase() === user.username.toLowerCase()) && (
+            {user?.username && rooms.some((r) => r.status === "open" && r.invitedUsername && r.invitedUsername.toLowerCase() === user.username.toLowerCase()) && (
               <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 border-2 border-amber-500/60 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-pulse">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-amber-500 text-neutral-950 flex items-center justify-center font-black">
@@ -1121,32 +1123,38 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
                 </div>
 
                 <div className="space-y-2">
-                  {displayRecentMatches.map((match: any, idx: number) => {
-                    const winnerSide = match.winner ? match.winner.toUpperCase() : 'DRAGON';
-                    return (
-                      <div
-                        key={match.id || idx}
-                        className="bg-neutral-950 border border-neutral-800/80 rounded-2xl p-2.5 text-xs space-y-1.5 transition-all hover:border-amber-500/30"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-white flex items-center gap-1.5 truncate max-w-[170px]">
-                            <span className="text-amber-400">⚔️</span>
-                            <span className="truncate">{match.creatorName || 'Host'} vs {match.acceptorName || 'Challenger'}</span>
-                          </span>
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
-                            {winnerSide} WINS
-                          </span>
-                        </div>
+                  {displayRecentMatches.length === 0 ? (
+                    <div className="py-4 text-center text-[11px] text-neutral-500 font-mono">
+                      কোনো পূর্ববর্তী ডুয়েল ম্যাচ রেকর্ড নেই
+                    </div>
+                  ) : (
+                    displayRecentMatches.map((match: any, idx: number) => {
+                      const winnerSide = match.winner ? match.winner.toUpperCase() : 'DRAGON';
+                      return (
+                        <div
+                          key={match.id || idx}
+                          className="bg-neutral-950 border border-neutral-800/80 rounded-2xl p-2.5 text-xs space-y-1.5 transition-all hover:border-amber-500/30"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-white flex items-center gap-1.5 truncate max-w-[170px]">
+                              <span className="text-amber-400">⚔️</span>
+                              <span className="truncate">{match.creatorName || 'Host'} vs {match.acceptorName || 'Challenger'}</span>
+                            </span>
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
+                              {winnerSide} WINS
+                            </span>
+                          </div>
 
-                        <div className="flex items-center justify-between text-[11px] text-neutral-400">
-                          <span>Pot: <strong className="text-amber-400 font-mono">৳{((match.amount || 0) + (match.acceptorAmount || 0)).toLocaleString()}</strong></span>
-                          <span className="font-mono text-[10px] text-neutral-500">
-                            {new Date(match.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
+                          <div className="flex items-center justify-between text-[11px] text-neutral-400">
+                            <span>Pot: <strong className="text-amber-400 font-mono">৳{((match.amount || 0) + (match.acceptorAmount || 0)).toLocaleString()}</strong></span>
+                            <span className="font-mono text-[10px] text-neutral-500">
+                              {new Date(match.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
               </div>
             </div>
@@ -1260,8 +1268,9 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
                     const roomOdds = room.odds || 2.0;
                     const acceptorStake = room.acceptorAmount || Math.round(room.amount * (roomOdds - 1));
                     const totalPot = room.amount + acceptorStake;
-                    const isOwnRoom = room.creatorId === user.userId;
+                    const isOwnRoom = user ? room.creatorId === user.userId : false;
                     const isInvitedForUser =
+                      user &&
                       room.invitedUsername &&
                       room.invitedUsername.toLowerCase() === user.username.toLowerCase();
 
@@ -1503,7 +1512,7 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
       )}
 
       {/* MULTI-STEP REPORT PLAYER MODAL */}
-      {showReportModal && selectedOpponent && (
+      {showReportModal && selectedOpponent && user && (
         <ReportPlayerModal
           isOpen={showReportModal}
           onClose={() => setShowReportModal(false)}
@@ -1546,8 +1555,8 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
                 <div className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-amber-400 rounded-full animate-pulse w-full" />
               </div>
               <div className="flex justify-between text-[10px] text-neutral-500 font-mono">
-                <span>Wallet Range: ৳{user.balance.toLocaleString()}</span>
-                <span>Tier: {user.cosmetics?.eloTier || 'Silver'}</span>
+                <span>Wallet Range: ৳{(user?.balance || 0).toLocaleString()}</span>
+                <span>Tier: {user?.cosmetics?.eloTier || 'Silver'}</span>
               </div>
             </div>
 

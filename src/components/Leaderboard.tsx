@@ -18,14 +18,6 @@ export const Leaderboard = React.memo<LeaderboardProps>(({ onOpenLiquidity, curr
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  const fallbackLeaderboard: LeaderboardEntry[] = [
-    { userId: 'usr_101', username: 'DragonKing', balance: 85400, profit: 45000, winRate: 72, gamesPlayed: 142, vipTier: 'Master VIP' },
-    { userId: 'usr_102', username: 'TigerMaster', balance: 62100, profit: 32000, winRate: 68, gamesPlayed: 110, vipTier: 'Diamond VIP' },
-    { userId: 'usr_103', username: 'ApexPredator', balance: 41000, profit: 21500, winRate: 64, gamesPlayed: 95, vipTier: 'Platinum VIP' },
-    { userId: 'usr_104', username: 'Velociraptor', balance: 38200, profit: 18400, winRate: 61, gamesPlayed: 88, vipTier: 'Gold VIP' },
-    { userId: 'usr_105', username: 'KolkataKnight', balance: 29500, profit: 12100, winRate: 58, gamesPlayed: 74, vipTier: 'Silver VIP' },
-  ];
-
   const fetchLeaderboard = async () => {
     try {
       const res = await fetch(`/api/leaderboard?sortBy=profit`);
@@ -33,13 +25,13 @@ export const Leaderboard = React.memo<LeaderboardProps>(({ onOpenLiquidity, curr
         throw new Error(`HTTP ${res.status}`);
       }
       const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         setLeaderboard(data);
       } else {
-        setLeaderboard((prev) => (prev.length > 0 ? prev : fallbackLeaderboard));
+        setLeaderboard([]);
       }
     } catch {
-      setLeaderboard((prev) => (prev.length > 0 ? prev : fallbackLeaderboard));
+      setLeaderboard([]);
     } finally {
       setLoading(false);
     }
@@ -108,6 +100,24 @@ export const Leaderboard = React.memo<LeaderboardProps>(({ onOpenLiquidity, curr
                 </div>
               </div>
             ))}
+          </div>
+        ) : leaderboard.length === 0 ? (
+          <div className="p-8 sm:p-12 text-center space-y-4">
+            <div className="w-16 h-16 rounded-3xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto shadow-lg">
+              <Trophy className="w-8 h-8 opacity-60" />
+            </div>
+            <div className="space-y-1.5 max-w-md mx-auto">
+              <h3 className="text-base sm:text-lg font-bold text-white">কোনো রিয়েল প্লেয়ার এখনও গেম খেলেনি</h3>
+              <p className="text-xs sm:text-sm text-neutral-400">
+                টেবিলে অথবা ১ বনাম ১ ডুয়েলে রাউন্ড খেলে সবার আগে লাভ অর্জন করুন এবং লিডারবোর্ডের শীর্ষ স্থান দখল করুন!
+              </p>
+            </div>
+            {currentUser && (
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-neutral-950/80 border border-neutral-800 text-xs text-neutral-300">
+                <span>বর্তমান প্লেয়ার:</span>
+                <span className="font-bold text-amber-300">@{currentUser.username}</span>
+              </div>
+            )}
           </div>
         ) : (
           <div className="divide-y divide-neutral-800">
