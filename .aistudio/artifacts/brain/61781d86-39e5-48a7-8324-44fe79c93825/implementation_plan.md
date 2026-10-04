@@ -1,14 +1,19 @@
-# Revised Implementation Plan: Fix Card Deal Animation Jumping & Flickering
+# Implementation Plan: Remove Card Shadows & Glows
 
-## Overview
-Standardize stable key props for `PlayingCard` inside `GameTable` and implement a pure, hardware-accelerated 3D card flip animation in `PlayingCard.tsx` without conflicting CSS opacity transitions.
+## Analysis
+The user requested to "remove card's white shadow" (`card er white shadow remove kore dan`). This refers to the prominent outer shadows (`shadow-2xl` / `shadow-xl`) and the white iridescent holographic shine sweeps rendered on the card elements.
+
+---
 
 ## Proposed Changes
 
-### 1. Pure 3D Hardware Flip (`src/components/PlayingCard.tsx`)
-- Remove conflicting CSS transitions on card faces.
-- Use 3D `rotateY: flipped ? 180 : 0` and native `backfaceVisibility: "hidden"`.
-- Smooth the spring dynamics.
+### 1. Remove Shadows in `PlayingCard.tsx`
+- Remove `shadow-2xl` and `shadow-xl` from the card front and card back container elements.
+- Simplify card front class list to use zero shadows.
+- Remove the holographic iridescent white shine sweep overlay (`bg-gradient-to-r with white/70`) which creates white reflection/shadow overlays.
 
-### 2. Stable Component Keys (`src/components/GameTable.tsx`)
-- Replace dynamic key suffixes with static, robust keys (`dragon-card`, `tiger-card`) to prevent unwanted React unmounts mid-animation.
+---
+
+## Verification Plan
+1. **Build & Lint Check**: Run `lint_applet` and `compile_applet`.
+2. **Visual Check**: Cards will render clean and flat with no white outer shadows or sweeps.

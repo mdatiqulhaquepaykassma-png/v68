@@ -2678,16 +2678,6 @@ export const GameTable = React.memo<GameTableProps>(({
            </div>
         </div>
 
-         {/* IN-BOUNDS TOP-LEFT FLOATING LIVE CLOCK WIDGET (Guaranteed 100% visible on mobile) */}
-         {liveClockTime && (
-           <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 z-40 flex items-center gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-black/85 backdrop-blur-md border border-amber-500/50 shadow-[0_4px_15px_rgba(0,0,0,0.85)] text-amber-300 pointer-events-none select-none">
-             <Clock className="w-3 h-3 text-amber-400 animate-pulse shrink-0" />
-             <span className="text-[9px] xs:text-[10px] sm:text-xs font-mono font-black tracking-tight tabular-nums text-amber-200">
-               {liveClockTime}
-             </span>
-           </div>
-         )}
-
          {/* BOTTOM LAYER: ICONIC21 INTEGRATED HUD CONSOLE */}
          <div className="relative z-30 w-full shrink-0 flex flex-col lg:flex-row items-stretch gap-1 sm:gap-1.5 bg-black/90 backdrop-blur-2xl p-1 sm:p-1.5 rounded-xl sm:rounded-2xl border border-white/10 shadow-2xl touch-manipulation">
             

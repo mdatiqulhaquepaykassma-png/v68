@@ -189,7 +189,7 @@ export const PlayingCard = React.memo<PlayingCardProps>(({
             transform: "rotateY(0deg)",
             pointerEvents: flipped ? "none" : "auto",
           }}
-          className="absolute inset-0 w-full h-full rounded-xl bg-neutral-950 border-2 border-amber-500/60 shadow-2xl flex flex-col items-center justify-center p-1"
+          className="absolute inset-0 w-full h-full rounded-xl bg-neutral-950 border-2 border-amber-500/60 flex flex-col items-center justify-center p-1"
         >
           {/* Geometric Diamond Guilloché Pattern */}
           <div 
@@ -225,21 +225,14 @@ export const PlayingCard = React.memo<PlayingCardProps>(({
             transform: "rotateY(180deg)",
             pointerEvents: flipped ? "auto" : "none",
           }}
-          className={`absolute inset-0 w-full h-full rounded-xl bg-white border shadow-2xl flex flex-col justify-between p-1.5 xs:p-2 sm:p-2.5 transition-shadow duration-300 ${
+          className={`absolute inset-0 w-full h-full rounded-xl bg-white border flex flex-col justify-between p-1.5 xs:p-2 sm:p-2.5 transition-shadow duration-300 ${
             canShowWinner
               ? side === "DRAGON"
                 ? "border-red-500 ring-4 ring-red-500/70 shadow-[0_0_40px_rgba(239,68,68,0.95)]"
                 : "border-amber-400 ring-4 ring-amber-400/70 shadow-[0_0_40px_rgba(251,191,36,1)]"
-              : "border-neutral-300 shadow-xl"
+              : "border-neutral-300"
           }`}
         >
-          {/* Holographic Iridescent Shine Sweep on Reveal */}
-          <motion.div
-            initial={{ x: "-120%" }}
-            animate={flipped ? { x: "240%" } : { x: "-120%" }}
-            transition={{ duration: 0.9, delay: 0.12, ease: "easeInOut" }}
-            className="absolute inset-0 w-3/4 rounded-xl bg-gradient-to-r from-transparent via-cyan-200/50 via-pink-200/50 via-white/70 to-transparent skew-x-12 pointer-events-none"
-          />
 
           {/* Top Rank + Suit */}
           <div className="flex flex-col items-start leading-none z-10">

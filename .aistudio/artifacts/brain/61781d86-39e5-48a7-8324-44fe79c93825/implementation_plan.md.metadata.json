@@ -1,6 +1,6 @@
 {
-  "summary":  "Stabilize card key props and simplify 3D flip animation without conflicting opacity triggers to eliminate card jumping and flickering during gameplay deals.",
-  "updatedAt":  "2026-10-04T07:45:52.066118968Z",
+  "summary":  "Remove all 3D shadows (shadow-2xl, shadow-xl) and glowing reflections from both the card front and card back elements to ensure a clean, shadow-free aesthetic.",
+  "updatedAt":  "2026-10-04T08:09:59.789425089Z",
   "requestFeedback":  true,
   "userFacing":  true
 }
