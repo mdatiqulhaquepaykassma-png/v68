@@ -111,9 +111,27 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
   };
 
   useEffect(() => {
-    fetchRecentMatches();
-    const interval = setInterval(fetchRecentMatches, 5000);
-    return () => clearInterval(interval);
+    let isMounted = true;
+    const loadRecentMatches = async () => {
+      try {
+        const res = await fetch(`/api/rooms/history/${user.userId}`);
+        if (res.ok && isMounted) {
+          const data = await res.json();
+          if (Array.isArray(data) && isMounted) {
+            setRecentMatches(data.filter((r: any) => r.status === 'completed' || r.winner));
+          }
+        }
+      } catch {
+        // quiet fallback
+      }
+    };
+
+    loadRecentMatches();
+    const interval = setInterval(loadRecentMatches, 5000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, [user.userId]);
 
   const displayRecentMatches = recentMatches.length > 0 ? recentMatches.slice(0, 5) : [
@@ -199,10 +217,128 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
   };
 
   useEffect(() => {
-    fetchRooms();
-    const interval = setInterval(fetchRooms, 3000);
-    return () => clearInterval(interval);
+    let isMounted = true;
+    const loadRooms = async () => {
+      try {
+        const [roomsRes, metricsRes] = await Promise.all([
+          fetch('/api/rooms').catch(() => null),
+          fetch('/api/transparency').catch(() => null),
+        ]);
+
+        if (roomsRes && roomsRes.ok && isMounted) {
+          const data = await roomsRes.json();
+          if (Array.isArray(data) && isMounted) {
+            setRooms(data);
+            data.forEach((r) => {
+              if (isFavorite(r.id) && r.status === 'matched') {
+                sendNotification({
+                  title: `⚔️ Favorite Room Action: ${r.creatorName}`,
+                  body: `A match was accepted in your favorited challenge room (${r.id})!`,
+                  type: 'round_start',
+                  roomId: r.id,
+                });
+              }
+            });
+          }
+        }
+
+        if (metricsRes && metricsRes.ok && isMounted) {
+          const m = await metricsRes.json();
+          if (isMounted) {
+            setPlatformMetrics({
+              todayCommission: m.todayCommission || 0,
+              todayTieRevenue: m.todayTieRevenue || 0,
+              todayMatchedVolume: m.todayMatchedVolume || 0,
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to fetch P2P rooms:', e);
+      } finally {
+        if (isMounted) {
+          setIsInitialLoading(false);
+        }
+      }
+    };
+
+    loadRooms();
+    const interval = setInterval(loadRooms, 3000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, [isFavorite]);
+
+  // Dedicated WebSocket Listener with Full Teardown & State Reset
+  useEffect(() => {
+    let socket: WebSocket | null = null;
+    let isMounted = true;
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    try {
+      socket = new WebSocket(`${protocol}//${window.location.host}`);
+
+      socket.onopen = () => {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: 'SUBSCRIBE_P2P_LOBBY', userId: user.userId }));
+        }
+      };
+
+      socket.onmessage = (event) => {
+        if (!isMounted) return;
+        try {
+          const data = JSON.parse(event.data);
+          if (
+            data.type === 'ROOM_CREATED' ||
+            data.type === 'ROOM_UPDATED' ||
+            data.type === 'ROOM_CANCELLED' ||
+            data.type === 'ROOM_EXPIRED' ||
+            data.type === 'P2P_MATCHED' ||
+            data.type === 'DUEL_UPDATE'
+          ) {
+            fetchRooms();
+          }
+        } catch {
+          // quiet safeguard
+        }
+      };
+
+      socket.onerror = () => {
+        // quiet error safeguard
+      };
+    } catch (e) {
+      console.warn('P2P Lobby WebSocket connection error:', e);
+    }
+
+    // Comprehensive Cleanup Routine on tab switch / unmount
+    return () => {
+      isMounted = false;
+
+      // 1. Explicitly remove socket handlers & close connection
+      if (socket) {
+        socket.onopen = null;
+        socket.onmessage = null;
+        socket.onerror = null;
+        socket.onclose = null;
+        if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+          socket.close();
+        }
+        socket = null;
+      }
+
+      // 2. Clear transient state variables to free memory
+      setSuccessMsg('');
+      setErrorMsg('');
+      setCopiedRoomId(null);
+      setIsMatchmaking(false);
+      setShowQuickChallengeModal(false);
+      setShowNotesModal(false);
+      setShowReportModal(false);
+      setSelectedOpponent(null);
+      setResolvedRoom(null);
+      setBotSpamWarning(null);
+    };
+  }, [user.userId]);
 
   // Live Calculations for Challenge Form
   const numCreatorStake = Math.max(10, Number(amount) || 10);

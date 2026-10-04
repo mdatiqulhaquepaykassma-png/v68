@@ -1,43 +1,31 @@
-# Implementation Plan: Memory Leak Patch & Memory Optimization for Web Service
+# Implementation Plan: P2P Lobby Cleanup & Memory Management
 
 ## Problem Statement
-The Web Service instance exceeded its memory limit and was automatically restarted by the hosting container. Analysis of the backend `server.ts` revealed several root causes:
-
-### Root Causes
-1. **Unbounded In-Memory Arrays**:
-   - `user.transactions`: Appended on every bet, refund, win, loss, deposit, withdrawal across 15+ endpoints without length caps.
-   - `userBetHistories`: Continuous growth per user across rounds.
-   - `globalTransactions`, `cashierDeposits`, `cashierWithdrawals`, `adminGrants`, `playerReports`, `roundDisputes`, and `chatMessages` growing indefinitely.
-2. **Infrequent Garbage Sweep**:
-   - The memory sweep timer was running only every 5 minutes (`300000ms`), allowing memory spikes during peak traffic.
-3. **High-Frequency Polling Allocation Pressure**:
-   - High-frequency polling on `/api/leaderboard`, `/api/metrics`, and `/api/rooms` re-allocated and serialized dynamic JSON strings on every request without micro-caching.
-4. **WebSocket Zombie Socket Retention**:
-   - Incomplete cleanup on disconnected/stale client sockets.
+When switching away from the P2P tab or unmounting the `P2PLobby` component, background intervals, active WebSocket listeners, and transient modal/matchmaking states can persist in memory or cause redundant state updates on unmounted components.
 
 ---
 
-## Proposed Changes & Patches
+## Proposed Changes
 
-### 1. Unified Safe Transaction Appender & Array Capping (`server.ts`)
-- Introduce `addTransactionToUser(user, tx)` helper that strictly caps `user.transactions` to 40 items.
-- Ensure all transaction additions route through this helper.
-- Enforce strict bounds on `userBetHistories` (max 40), `globalTransactions` (max 100), and `chatMessages` (max 60).
+### 1. Dedicated WebSocket Listener with Full Teardown (`src/components/P2PLobby.tsx`)
+- Add a dedicated `useEffect` hook in `P2PLobby.tsx` that establishes a WebSocket subscription for live P2P events (`ROOM_CREATED`, `ROOM_UPDATED`, `ROOM_CANCELLED`, `ROOM_EXPIRED`, `P2P_MATCHED`, `DUEL_UPDATE`).
+- In the return cleanup function:
+  - Set `isMounted = false` to prevent late state updates.
+  - Explicitly nullify all event handlers (`onopen`, `onmessage`, `onerror`, `onclose`).
+  - Close the WebSocket connection cleanly if open or connecting (`socket.close()`).
 
-### 2. Aggressive 60-Second Memory Sweep & GC Watchdog (`server.ts`)
-- Shorten sweep interval from 5 minutes to 60 seconds (`60000ms`).
-- In each sweep:
-  - Prune all per-user transaction and bet history arrays.
-  - Purge expired duels, anti-spam rate trackers, and old logs.
-  - Terminate dead WebSocket sockets.
-  - Monitor `process.memoryUsage()`. If heap usage exceeds threshold (350 MB), perform emergency array trimming and trigger `global.gc?.()`.
+### 2. Transient State Cleanup on Unmount (`src/components/P2PLobby.tsx`)
+- Inside the unmount cleanup function, explicitly reset transient state variables to release heap references:
+  - Reset `isMatchmaking` state to `false`.
+  - Clear `copiedRoomId`, `successMsg`, `errorMsg`, and `botSpamWarning`.
+  - Close all open modal overlays (`showQuickChallengeModal`, `showNotesModal`, `showReportModal`).
+  - Clear `selectedOpponent` and `resolvedRoom` objects.
 
-### 3. Lightweight Response Micro-Cache (1s TTL) (`server.ts`)
-- Add in-memory 1-second cached responses for high-frequency read endpoints (`/api/leaderboard`, `/api/metrics`, `/api/rooms`).
-- Drastically reduces GC garbage allocation during multi-user traffic spikes.
+### 3. Verification of Polling Intervals (`src/components/P2PLobby.tsx` & `src/components/OneOnOneArena.tsx`)
+- Ensure all `setInterval` calls for room and chat updates cleanly call `clearInterval` on teardown.
 
 ---
 
 ## Verification Plan
-1. **Lint & Compilation**: Run `lint_applet` and `compile_applet` to confirm 0 TypeScript/build errors.
-2. **Server Memory Verification**: Check startup and simulated tick cycles to confirm bounded memory footprint.
+1. **Linting & Compilation**: Execute `lint_applet` and `compile_applet` to confirm zero build or type errors.
+2. **Tab Switching Verification**: Verify smooth memory release when toggling between P2P Lobby, Leaderboard, and Game Table views without lingering event listeners or memory leaks.
