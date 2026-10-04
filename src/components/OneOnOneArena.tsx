@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { UserWallet, P2PRoom, PlayingCard } from "../types";
 import { sound } from "../utils/audio";
+import { getActiveCurrencySymbol, formatCurrency } from "../utils/currency";
 
 interface OneOnOneArenaProps {
   user: UserWallet;
@@ -882,42 +883,43 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
   };
 
   const userGlow = getCardStrengthGlow(duel?.userCard);
+  const currencySymbol = getActiveCurrencySymbol();
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-4">
+    <div className="w-full max-w-5xl mx-auto space-y-3 pb-8">
       {/* Lobby View & Queue Selection */}
       {activeMode === "lobby" && (
-        <div className="space-y-4 sm:space-y-5">
-          {/* Minimal Clean Hero Banner */}
-          <div className="relative rounded-2xl bg-gradient-to-r from-neutral-950 via-neutral-900 to-neutral-950 border border-amber-500/25 p-4 sm:p-5 shadow-xl overflow-hidden">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 relative z-10">
-              <div className="space-y-1 text-center sm:text-left">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] font-bold">
-                  <Swords className="w-3.5 h-3.5 text-amber-400" />
-                  <span>1v1 DUAL ARENA</span>
+        <div className="space-y-3 sm:space-y-4">
+          {/* Ultra-Compact Clean Hero Banner */}
+          <div className="relative rounded-xl bg-gradient-to-r from-neutral-950 via-neutral-900 to-neutral-950 border border-amber-500/25 p-3 sm:p-4 shadow-lg overflow-hidden">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 relative z-10">
+              <div className="space-y-0.5 text-left">
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-bold">
+                  <Swords className="w-3 h-3 text-amber-400" />
+                  <span>1v1 DUEL ARENA</span>
                 </div>
-                <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                <h1 className="text-base sm:text-xl font-black text-white tracking-tight">
                   Head-to-Head Card Battle
                 </h1>
-                <p className="text-xs text-neutral-400">
+                <p className="text-[11px] sm:text-xs text-neutral-400">
                   Real-time turn-based card duel. Higher card takes 95% of pot.
                 </p>
               </div>
 
               {/* Player Stats Chips */}
-              <div className="flex items-center gap-2 bg-black/60 border border-white/10 p-2 rounded-xl backdrop-blur-md">
-                <div className="text-center px-3">
-                  <div className="text-[9px] uppercase text-neutral-500 font-bold">Rating</div>
-                  <div className="text-sm font-black text-amber-400 flex items-center justify-center gap-1">
-                    <Trophy className="w-3.5 h-3.5 text-amber-400" />
+              <div className="flex items-center gap-1.5 bg-black/60 border border-white/10 p-1.5 rounded-lg backdrop-blur-md self-stretch sm:self-auto justify-around sm:justify-start">
+                <div className="text-center px-2.5">
+                  <div className="text-[8px] uppercase text-neutral-500 font-bold">Rating</div>
+                  <div className="text-xs sm:text-sm font-black text-amber-400 flex items-center justify-center gap-1">
+                    <Trophy className="w-3 h-3 text-amber-400" />
                     <span>{user.cosmetics?.eloRating || 1250}</span>
                   </div>
                 </div>
-                <div className="w-px h-6 bg-white/10" />
-                <div className="text-center px-3">
-                  <div className="text-[9px] uppercase text-neutral-500 font-bold">Played</div>
-                  <div className="text-sm font-black text-emerald-400 flex items-center justify-center gap-1">
-                    <Swords className="w-3.5 h-3.5 text-emerald-400" />
+                <div className="w-px h-5 bg-white/10" />
+                <div className="text-center px-2.5">
+                  <div className="text-[8px] uppercase text-neutral-500 font-bold">Played</div>
+                  <div className="text-xs sm:text-sm font-black text-emerald-400 flex items-center justify-center gap-1">
+                    <Swords className="w-3 h-3 text-emerald-400" />
                     <span>{user.gamesPlayed || 0}</span>
                   </div>
                 </div>
@@ -925,91 +927,91 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
             </div>
           </div>
 
-          {/* Minimal Clean Matchmaking Queue Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Compact High-Density Matchmaking Queue Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
             {/* Express Queue */}
-            <div className="bg-neutral-900/90 border border-white/10 hover:border-amber-500/40 rounded-xl p-4 shadow-lg transition-all flex flex-col justify-between space-y-3">
-              <div className="space-y-1">
+            <div className="bg-neutral-900/90 border border-white/10 hover:border-amber-500/40 rounded-xl p-3 sm:p-3.5 shadow transition-all flex flex-col justify-between space-y-2.5">
+              <div className="space-y-0.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black uppercase text-amber-400 flex items-center gap-1">
                     <Zap className="w-3.5 h-3.5 text-amber-400" /> Express
                   </span>
-                  <span className="text-[11px] font-mono font-bold bg-amber-500/15 text-amber-300 px-2 py-0.5 rounded-md border border-amber-500/25">
-                    ৳100 Ante
+                  <span className="text-[10px] sm:text-[11px] font-mono font-bold bg-amber-500/15 text-amber-300 px-2 py-0.5 rounded-md border border-amber-500/25">
+                    {currencySymbol}100 Ante
                   </span>
                 </div>
-                <p className="text-[11px] text-neutral-400">Fast 10s decision rounds</p>
+                <p className="text-[10.5px] text-neutral-400">Fast 10s decision rounds</p>
               </div>
 
               <button
                 onClick={() => handleStartMatchmaking("Express")}
                 disabled={isSearching}
-                className="w-full py-2.5 bg-neutral-800 hover:bg-neutral-700 text-amber-300 hover:text-white font-black rounded-lg border border-amber-500/30 hover:border-amber-400 active:scale-95 transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer shadow"
+                className="w-full py-2 sm:py-2.5 bg-neutral-800 hover:bg-neutral-700 text-amber-300 hover:text-white font-black rounded-lg border border-amber-500/30 hover:border-amber-400 active:scale-95 transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer shadow"
               >
-                <Swords className="w-3.5 h-3.5 text-amber-400" />
-                <span>Play Express (৳100)</span>
+                <Swords className="w-3 h-3 text-amber-400" />
+                <span>Play Express ({currencySymbol}100)</span>
               </button>
             </div>
 
             {/* Classic Queue */}
-            <div className="bg-neutral-900/95 border-2 border-amber-500/60 hover:border-amber-400 rounded-xl p-4 shadow-lg transition-all flex flex-col justify-between space-y-3 relative overflow-hidden">
-              <div className="absolute top-0 right-0 bg-amber-500 text-neutral-950 text-[9px] font-black uppercase px-2 py-0.5 rounded-bl-lg">
+            <div className="bg-neutral-900/95 border-2 border-amber-500/60 hover:border-amber-400 rounded-xl p-3 sm:p-3.5 shadow transition-all flex flex-col justify-between space-y-2.5 relative overflow-hidden">
+              <div className="absolute top-0 right-0 bg-amber-500 text-neutral-950 text-[8.5px] font-black uppercase px-2 py-0.5 rounded-bl-lg">
                 Popular
               </div>
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black uppercase text-amber-300 flex items-center gap-1">
                     <Shield className="w-3.5 h-3.5 text-amber-400" /> Classic
                   </span>
-                  <span className="text-[11px] font-mono font-bold bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-md border border-amber-500/30">
-                    ৳500 Ante
+                  <span className="text-[10px] sm:text-[11px] font-mono font-bold bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-md border border-amber-500/30">
+                    {currencySymbol}500 Ante
                   </span>
                 </div>
-                <p className="text-[11px] text-neutral-400">Standard 15s strategic turns</p>
+                <p className="text-[10.5px] text-neutral-400">Standard 15s strategic turns</p>
               </div>
 
               <button
                 onClick={() => handleStartMatchmaking("Classic")}
                 disabled={isSearching}
-                className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-neutral-950 font-black rounded-lg shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer"
+                className="w-full py-2 sm:py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-neutral-950 font-black rounded-lg shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer"
               >
-                <Swords className="w-3.5 h-3.5" />
-                <span>Play Classic (৳500)</span>
+                <Swords className="w-3 h-3" />
+                <span>Play Classic ({currencySymbol}500)</span>
               </button>
             </div>
 
             {/* VIP Queue */}
-            <div className="bg-neutral-900/90 border border-white/10 hover:border-amber-500/40 rounded-xl p-4 shadow-lg transition-all flex flex-col justify-between space-y-3">
-              <div className="space-y-1">
+            <div className="bg-neutral-900/90 border border-white/10 hover:border-amber-500/40 rounded-xl p-3 sm:p-3.5 shadow transition-all flex flex-col justify-between space-y-2.5">
+              <div className="space-y-0.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black uppercase text-amber-400 flex items-center gap-1">
                     <Crown className="w-3.5 h-3.5 text-amber-400" /> VIP Lounge
                   </span>
-                  <span className="text-[11px] font-mono font-bold bg-amber-500/15 text-amber-300 px-2 py-0.5 rounded-md border border-amber-500/25">
-                    ৳2,000 Ante
+                  <span className="text-[10px] sm:text-[11px] font-mono font-bold bg-amber-500/15 text-amber-300 px-2 py-0.5 rounded-md border border-amber-500/25">
+                    {currencySymbol}2,000 Ante
                   </span>
                 </div>
-                <p className="text-[11px] text-neutral-400">High-stakes diamond battle</p>
+                <p className="text-[10.5px] text-neutral-400">High-stakes diamond battle</p>
               </div>
 
               <button
                 onClick={() => handleStartMatchmaking("VIP")}
                 disabled={isSearching}
-                className="w-full py-2.5 bg-neutral-800 hover:bg-neutral-700 text-amber-300 hover:text-white font-black rounded-lg border border-amber-500/30 hover:border-amber-400 active:scale-95 transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer shadow"
+                className="w-full py-2 sm:py-2.5 bg-neutral-800 hover:bg-neutral-700 text-amber-300 hover:text-white font-black rounded-lg border border-amber-500/30 hover:border-amber-400 active:scale-95 transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer shadow"
               >
-                <Crown className="w-3.5 h-3.5 text-amber-400" />
-                <span>Play VIP (৳2,000)</span>
+                <Crown className="w-3 h-3 text-amber-400" />
+                <span>Play VIP ({currencySymbol}2,000)</span>
               </button>
             </div>
           </div>
 
-          {/* Minimal Private Duel Action Bar */}
-          <div className="bg-neutral-950/80 border border-white/10 rounded-xl p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow">
+          {/* Compact Private Duel Action Bar */}
+          <div className="bg-neutral-950/80 border border-white/10 rounded-xl p-2.5 sm:p-3 flex flex-col sm:flex-row items-center justify-between gap-2.5 shadow">
             <div className="flex items-center gap-2 text-center sm:text-left">
               <Shield className="w-4 h-4 text-amber-400 shrink-0" />
               <div>
                 <span className="text-xs font-bold text-white block">Private Duel</span>
-                <span className="text-[11px] text-neutral-500">Play with friends using custom room code</span>
+                <span className="text-[10.5px] text-neutral-500">Play with friends using custom room code</span>
               </div>
             </div>
             
@@ -1020,9 +1022,9 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
                   setShowCreatePersonal(true);
                   setPersonalCreatedRoom(null);
                 }}
-                className="flex-1 sm:flex-none px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 shadow active:scale-95 cursor-pointer"
+                className="flex-1 sm:flex-none px-3 py-1.5 sm:py-2 bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 shadow active:scale-95 cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5" />
+                <Plus className="w-3 h-3" />
                 <span>Create Room</span>
               </button>
               
@@ -1032,9 +1034,9 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
                   setShowJoinPersonal(true);
                   setPersonalJoinError("");
                 }}
-                className="flex-1 sm:flex-none px-3.5 py-2 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-neutral-700 hover:border-amber-400/50 font-bold text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
+                className="flex-1 sm:flex-none px-3 py-1.5 sm:py-2 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-neutral-700 hover:border-amber-400/50 font-bold text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
               >
-                <Swords className="w-3.5 h-3.5 text-amber-400" />
+                <Swords className="w-3 h-3 text-amber-400" />
                 <span>Join with Code</span>
               </button>
             </div>
@@ -1113,7 +1115,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
                     <p className="text-[11px] text-amber-400 font-medium">Use matchmaking or click "Create Personal Room" above to start!</p>
                   </div>
                 ) : (
-                  <div className="max-h-[380px] overflow-y-auto pr-1 space-y-3 custom-scrollbar">
+                  <div className="space-y-3">
                     {rooms
                       .filter((r) => r.status === "open")
                       .map((room) => {
@@ -1149,7 +1151,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
                                 </div>
                               </div>
                               <div className="text-right">
-                                <div className="text-xs font-black text-amber-400">৳{room.amount.toLocaleString()}</div>
+                                <div className="text-xs font-black text-amber-400">{currencySymbol}{room.amount.toLocaleString()}</div>
                                 <div className="text-[9px] text-neutral-500">Odds: {room.odds || 2.0}x</div>
                               </div>
                             </div>
@@ -1284,7 +1286,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
                                 <div className="text-[9px] text-neutral-500">Role: {isCreator ? hr.choice?.toUpperCase() : (hr.choice === "dragon" ? "TIGER" : "DRAGON")}</div>
                               </td>
                               <td className="p-3">
-                                <div className="font-bold">৳{hr.amount.toLocaleString()}</div>
+                                <div className="font-bold">{currencySymbol}{hr.amount.toLocaleString()}</div>
                                 <div className="text-[9px] text-neutral-500">Odds: {hr.odds || 2.0}x</div>
                               </td>
                               <td className="p-3">
@@ -1407,10 +1409,10 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
                   <div className="bg-neutral-950 p-3.5 rounded-2xl border border-amber-500/30 flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2 text-amber-400 font-bold">
                       <Coins className="w-4 h-4" />
-                      <span>Stake: ৳1</span>
+                      <span>Stake: {currencySymbol}1</span>
                     </div>
                     <span className="text-neutral-400 font-mono">
-                      Balance: ৳{user.balance.toLocaleString()}
+                      Balance: {currencySymbol}{user.balance.toLocaleString()}
                     </span>
                   </div>
 
@@ -1850,7 +1852,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
                         <Coins className="w-3.5 h-3.5 text-amber-400" />
                         <span>Your Stake Amount (বাজির পরিমাণ)</span>
                       </span>
-                      <span className="text-amber-400 font-bold text-[10px]">Min: ৳1 chip</span>
+                      <span className="text-amber-400 font-bold text-[10px]">Min: {currencySymbol}1 chip</span>
                     </label>
                     <input
                       type="number"
@@ -1860,7 +1862,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
                       min="1"
                       className="w-full bg-neutral-950 border border-neutral-800 focus:border-amber-500 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none font-bold"
                     />
-                    <span className="block text-[9px] text-neutral-500">সর্বনিম্ন বাজি ৳১ চিপস থেকে শুরু করে আপনার ইচ্ছামত বাজি নির্ধারণ করতে পারবেন।</span>
+                    <span className="block text-[9px] text-neutral-500">সর্বনিম্ন বাজি {currencySymbol}১ চিপস থেকে শুরু করে আপনার ইচ্ছামত বাজি নির্ধারণ করতে পারবেন।</span>
                   </div>
 
                   {/* Error label */}
@@ -1939,7 +1941,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
             <div className="bg-gradient-to-r from-amber-500/20 via-neutral-950 to-amber-500/20 border border-amber-500/50 px-3.5 sm:px-4 py-1.5 rounded-2xl text-center">
               <div className="text-[9px] sm:text-[10px] uppercase font-bold text-amber-300">POT IN ESCROW</div>
               <div className="text-sm sm:text-base font-black text-amber-400">
-                ৳{duel.currentPot.toLocaleString()}
+                {currencySymbol}{duel.currentPot.toLocaleString()}
               </div>
             </div>
           </div>
@@ -2038,7 +2040,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
 
                       <div className="text-right">
                         <div className="text-[8px] sm:text-[10px] uppercase font-bold text-neutral-400">Bet</div>
-                        <div className="text-[11px] sm:text-xs font-black text-amber-400">৳{duel.dragonPlayer.currentBet.toLocaleString()}</div>
+                        <div className="text-[11px] sm:text-xs font-black text-amber-400">{currencySymbol}{duel.dragonPlayer.currentBet.toLocaleString()}</div>
                       </div>
                     </div>
 
@@ -2060,7 +2062,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
                               isPeeked
                                 ? dragonGlow.glow
                                 : isPressingCard
-                                ? "border-amber-400 bg-neutral-950 scale-105 shadow-2xl rotate-2 animate-pulse"
+                                ? "border-amber-400 bg-neutral-950 scale-105 shadow-2xl -rotate-2 animate-pulse"
                                 : "border-amber-500/50 bg-gradient-to-br from-neutral-900 via-neutral-950 to-amber-950 shadow-xl"
                             }`}
                           >
@@ -2161,7 +2163,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
                     <div className="flex items-center justify-between mb-2 sm:mb-3">
                       <div className="flex items-center gap-2 sm:gap-2.5">
                         <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center font-bold text-amber-400 text-xs sm:text-sm">
-                          🐯
+                          🐅
                         </div>
                         <div>
                           <div className="text-[11px] sm:text-xs font-black text-white flex items-center gap-1">
@@ -2178,7 +2180,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
 
                       <div className="text-right">
                         <div className="text-[8px] sm:text-[10px] uppercase font-bold text-neutral-400">Bet</div>
-                        <div className="text-[11px] sm:text-xs font-black text-amber-400">৳{duel.tigerPlayer.currentBet.toLocaleString()}</div>
+                        <div className="text-[11px] sm:text-xs font-black text-amber-400">{currencySymbol}{duel.tigerPlayer.currentBet.toLocaleString()}</div>
                       </div>
                     </div>
 
@@ -2313,7 +2315,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
                     className="py-2.5 px-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-neutral-950 font-black text-xs rounded-xl shadow-md transition-all active:scale-95 flex flex-col items-center justify-center leading-tight cursor-pointer"
                   >
                     <span className="font-black text-xs">RAISE 2X</span>
-                    <span className="text-[10px] font-mono font-bold text-neutral-950/80">+৳{(duel.ante * 2).toLocaleString()}</span>
+                    <span className="text-[10px] font-mono font-bold text-neutral-950/80">+{currencySymbol}{(duel.ante * 2).toLocaleString()}</span>
                   </button>
 
                   <button
@@ -2321,7 +2323,7 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
                     className="py-2.5 px-2 bg-gradient-to-r from-amber-500 via-amber-400 to-red-500 hover:from-amber-400 hover:to-red-400 text-neutral-950 font-black text-xs rounded-xl shadow-md transition-all active:scale-95 flex flex-col items-center justify-center leading-tight cursor-pointer"
                   >
                     <span className="font-black text-xs">RAISE 3X</span>
-                    <span className="text-[10px] font-mono font-bold text-neutral-950/80">+৳{(duel.ante * 3).toLocaleString()}</span>
+                    <span className="text-[10px] font-mono font-bold text-neutral-950/80">+{currencySymbol}{(duel.ante * 3).toLocaleString()}</span>
                   </button>
 
                   <button
@@ -2363,9 +2365,9 @@ export const OneOnOneArena: React.FC<OneOnOneArenaProps> = ({ user, onUpdateWall
                 </div>
 
                 <div className="p-3 bg-neutral-950 rounded-xl border border-neutral-800 max-w-sm mx-auto space-y-1">
-                  <div className="text-xs text-neutral-400">Total Pot: ৳{duel.currentPot.toLocaleString()}</div>
+                  <div className="text-xs text-neutral-400">Total Pot: {currencySymbol}{duel.currentPot.toLocaleString()}</div>
                   <div className={`text-base font-black ${duel.netProfit && duel.netProfit > 0 ? "text-emerald-400" : "text-red-400"}`}>
-                    Net Profit: {duel.netProfit && duel.netProfit > 0 ? `+৳${duel.netProfit.toLocaleString()}` : `-৳${Math.abs(duel.netProfit || 0).toLocaleString()}`}
+                    Net Profit: {duel.netProfit && duel.netProfit > 0 ? `+${currencySymbol}${duel.netProfit.toLocaleString()}` : `-${currencySymbol}${Math.abs(duel.netProfit || 0).toLocaleString()}`}
                   </div>
                 </div>
 

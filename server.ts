@@ -11,7 +11,7 @@ import { createServer } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import crypto from "crypto";
 import Decimal from "decimal.js";
-import { TableRound, TableConfig, PlayingCard, RoadmapItem, UserWallet, P2PRoom, UserStats, TablePerformance, SidePerformance, LiveBetRecord, SiteLiquidityData, UserBalanceRecord, UserBetHistoryItem, UserBetHistoryResponse, UserCosmetics, PlayerReport, CapacityTrendPoint, AdminGrant, TagFolderSummary, UserActivityLog, RoundDispute } from "./src/types";
+import { TableRound, TableConfig, PlayingCard, RoadmapItem, UserWallet, Transaction, P2PRoom, UserStats, TablePerformance, SidePerformance, LiveBetRecord, SiteLiquidityData, UserBalanceRecord, UserBetHistoryItem, UserBetHistoryResponse, UserCosmetics, PlayerReport, CapacityTrendPoint, AdminGrant, TagFolderSummary, UserActivityLog, RoundDispute } from "./src/types";
 import {
   FORCE_PASSWORD_RESET_ON_NEW_DEVICE,
   deriveDeviceId,
@@ -48,11 +48,18 @@ app.use(express.json());
 
 // Health Check Path for Render & Monitoring
 app.get("/api/health", (_req, res) => {
+  const mem = process.memoryUsage();
   res.status(200).json({
     status: "ok",
     uptime: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),
     version: process.env.RENDER_GIT_COMMIT?.slice(0, 7) || "dev",
+    memory: {
+      rssMb: Math.round(mem.rss / 1024 / 1024),
+      heapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
+      heapTotalMb: Math.round(mem.heapTotal / 1024 / 1024),
+    },
+    connectedClients: wss.clients.size,
   });
 });
 
@@ -597,7 +604,18 @@ function logUserActivity(userId: string, username: string, action: string, detai
     timestamp: new Date().toISOString(),
   };
   userActivityLogs[userId].unshift(log);
+  if (userActivityLogs[userId].length > 30) {
+    userActivityLogs[userId].length = 30;
+  }
   return log;
+}
+
+function addTransactionToUser(user: UserWallet, tx: Transaction) {
+  if (!user.transactions) user.transactions = [];
+  user.transactions.unshift(tx);
+  if (user.transactions.length > 40) {
+    user.transactions.length = 40;
+  }
 }
 
 function getOrSeedUserBetHistory(userId: string, _username = "Player"): UserBetHistoryItem[] {
@@ -933,7 +951,13 @@ function broadcast(data: Record<string, unknown>) {
   const message = JSON.stringify(data);
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
-      client.send(message);
+      try {
+        client.send(message);
+      } catch {
+        try {
+          (client as any).terminate();
+        } catch {}
+      }
     }
   });
 }
@@ -990,7 +1014,7 @@ setInterval(() => {
               } else {
                 user.demoBalance += unmatchedPart;
               }
-              user.transactions.unshift({
+              addTransactionToUser(user, {
                 id: `tx_unmatched_${Date.now()}_${Math.random().toString(36).substring(7)}`,
                 type: "refund",
                 amount: unmatchedPart,
@@ -1138,7 +1162,7 @@ setInterval(() => {
                   // User Directive: "and tie hole sob tk company pabe"
                   user.totalLost += matchedStake;
                   recordSettledBetOnUserStats(user, bet, true, "TIE", slug as any, tbl.config.name, matchedStake, false);
-                  user.transactions.unshift({
+                  addTransactionToUser(user, {
                     id: `tx_tie_loss_${Date.now()}_${Math.random().toString(36).substring(7)}`,
                     type: "loss",
                     amount: matchedStake,
@@ -1156,7 +1180,7 @@ setInterval(() => {
                   }
                   user.totalWon = new Decimal(user.totalWon).plus(profit).toNumber();
                   recordSettledBetOnUserStats(user, bet, false, round.result as any, slug as any, tbl.config.name, profit, true);
-                  user.transactions.unshift({
+                  addTransactionToUser(user, {
                     id: `tx_${Date.now()}_${Math.random().toString(36).substring(7)}`,
                     type: "win",
                     amount: payout,
@@ -1166,7 +1190,7 @@ setInterval(() => {
                 } else {
                   user.totalLost += matchedStake;
                   recordSettledBetOnUserStats(user, bet, false, round.result as any, slug as any, tbl.config.name, matchedStake, false);
-                  user.transactions.unshift({
+                  addTransactionToUser(user, {
                     id: `tx_${Date.now()}_${Math.random().toString(36).substring(7)}`,
                     type: "loss",
                     amount: matchedStake,
@@ -1261,7 +1285,7 @@ function settleDuelOnFold(duel: ActiveDuel, foldingUserId: string) {
     winnerUser.balance += winnerPayout;
     winnerUser.totalWon += winnerPayout - (isCreator ? duel.acceptorBet : duel.creatorBet);
     winnerUser.gamesPlayed += 1;
-    winnerUser.transactions.unshift({
+    addTransactionToUser(winnerUser, {
       id: `tx_duel_win_${Date.now()}`,
       type: "deposit",
       amount: winnerPayout,
@@ -1278,7 +1302,7 @@ function settleDuelOnFold(duel: ActiveDuel, foldingUserId: string) {
   if (loserUser) {
     loserUser.totalLost += isCreator ? duel.creatorBet : duel.acceptorBet;
     loserUser.gamesPlayed += 1;
-    loserUser.transactions.unshift({
+    addTransactionToUser(loserUser, {
       id: `tx_duel_loss_${Date.now()}`,
       type: "withdraw",
       amount: isCreator ? duel.creatorBet : duel.acceptorBet,
@@ -1365,7 +1389,7 @@ function settleDuelOnShowdown(duel: ActiveDuel) {
     if (creator) {
       creator.totalLost += duel.creatorBet;
       creator.gamesPlayed += 1;
-      creator.transactions.unshift({
+      addTransactionToUser(creator, {
         id: `tx_duel_tie_${Date.now()}`,
         type: "loss",
         amount: duel.creatorBet,
@@ -1379,7 +1403,7 @@ function settleDuelOnShowdown(duel: ActiveDuel) {
     if (acceptor) {
       acceptor.totalLost += duel.acceptorBet;
       acceptor.gamesPlayed += 1;
-      acceptor.transactions.unshift({
+      addTransactionToUser(acceptor, {
         id: `tx_duel_tie_${Date.now()}`,
         type: "loss",
         amount: duel.acceptorBet,
@@ -1405,7 +1429,7 @@ function settleDuelOnShowdown(duel: ActiveDuel) {
       winnerUser.balance += winnerPayout;
       winnerUser.totalWon += winnerPayout - winnerBet;
       winnerUser.gamesPlayed += 1;
-      winnerUser.transactions.unshift({
+      addTransactionToUser(winnerUser, {
         id: `tx_duel_win_${Date.now()}`,
         type: "deposit",
         amount: winnerPayout,
@@ -1420,7 +1444,7 @@ function settleDuelOnShowdown(duel: ActiveDuel) {
     if (loserUser) {
       loserUser.totalLost += loserBet;
       loserUser.gamesPlayed += 1;
-      loserUser.transactions.unshift({
+      addTransactionToUser(loserUser, {
         id: `tx_duel_loss_${Date.now()}`,
         type: "withdraw",
         amount: loserBet,
@@ -1540,9 +1564,14 @@ interface LiveChatMessage {
 const chatMessages: LiveChatMessage[] = [];
 
 // ============================================================================
-// WEBSOCKET HANDLERS
+// WEBSOCKET HANDLERS & HEARTBEAT
 // ============================================================================
 wss.on("connection", (ws) => {
+  (ws as any).isAlive = true;
+  ws.on("pong", () => {
+    (ws as any).isAlive = true;
+  });
+
   ws.send(JSON.stringify({ type: "WELCOME", message: "Connected to Dragon Tiger P2P Arena" }));
 
   ws.on("message", (message) => {
@@ -1591,6 +1620,27 @@ wss.on("connection", (ws) => {
     }
   });
 });
+
+// Periodic 30-Second Ping/Pong Heartbeat to Purge Zombie Sockets
+const wsHeartbeatInterval = setInterval(() => {
+  wss.clients.forEach((ws: any) => {
+    if (ws.isAlive === false) {
+      try {
+        ws.terminate();
+      } catch {}
+      return;
+    }
+    ws.isAlive = false;
+    try {
+      ws.ping();
+    } catch {
+      try {
+        ws.terminate();
+      } catch {}
+    }
+  });
+}, 30000);
+wsHeartbeatInterval.unref();
 
 // ============================================================================
 // REST API ENDPOINTS & AUTH MIDDLEWARE
@@ -1934,7 +1984,7 @@ app.post(["/api/wallet/reset-demo", "/api/wallet/:userId/reset-demo"], requireUs
   }
 
   user.demoBalance = 10000;
-  user.transactions.unshift({
+  addTransactionToUser(user, {
     id: `tx_${Date.now()}_demo_refill`,
     type: "faucet",
     amount: 10000,
@@ -2568,7 +2618,7 @@ app.post("/api/wallet/deposit", requireUser, (req, res) => {
     timestamp: new Date().toISOString(),
     description: cleanDesc,
   };
-  user.transactions.unshift(tx);
+  addTransactionToUser(user, tx);
   recordGlobalTransaction({
     type: "deposit",
     username: user.username,
@@ -2644,7 +2694,7 @@ app.post("/api/wallet/withdraw", requireUser, (req, res) => {
     timestamp: new Date().toISOString(),
     description: cleanDesc,
   };
-  user.transactions.unshift(tx);
+  addTransactionToUser(user, tx);
   recordGlobalTransaction({
     type: "withdraw",
     username: user.username,
@@ -2891,7 +2941,7 @@ const checkExpiredRooms = () => {
         const creator = mockUsers[room.creatorId];
         if (creator) {
           creator.balance += room.amount;
-          creator.transactions.unshift({
+          addTransactionToUser(creator, {
             id: `tx_p2p_expire_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
             type: "deposit",
             amount: room.amount,
@@ -2907,6 +2957,99 @@ const checkExpiredRooms = () => {
 };
 
 setInterval(checkExpiredRooms, 10000);
+
+// Periodic 60-Second In-Memory State & Cache Garbage Sweep + Heap Watchdog
+const memorySweepInterval = setInterval(() => {
+  const now = Date.now();
+
+  // 1. Clean stale anti-spam attempt tracking older than 5 minutes
+  for (const uid in recentRoomAttempts) {
+    recentRoomAttempts[uid] = recentRoomAttempts[uid].filter((t) => now - t < 5 * 60 * 1000);
+    if (recentRoomAttempts[uid].length === 0) {
+      delete recentRoomAttempts[uid];
+    }
+  }
+
+  // 2. Clean settled duels older than 30 seconds
+  for (const duelId in activeDuels) {
+    const duel = activeDuels[duelId];
+    if (duel && duel.status === "SETTLED" && now - duel.lastUpdated > 30000) {
+      delete activeDuels[duelId];
+    }
+  }
+
+  // 3. Cap user activity logs per user to max 30 items
+  for (const uid in userActivityLogs) {
+    if (userActivityLogs[uid] && userActivityLogs[uid].length > 30) {
+      userActivityLogs[uid].length = 30;
+    }
+  }
+
+  // 4. Cap all user transactions to max 40 items
+  for (const uid in mockUsers) {
+    const u = mockUsers[uid];
+    if (u && u.transactions && u.transactions.length > 40) {
+      u.transactions.length = 40;
+    }
+  }
+
+  // 5. Cap userBetHistories to max 40 items
+  for (const uid in userBetHistories) {
+    if (userBetHistories[uid] && userBetHistories[uid].length > 40) {
+      userBetHistories[uid].length = 40;
+    }
+  }
+
+  // 6. Cap in-memory history lists to prevent unbounded RAM expansion
+  if (p2pRoomsHistory.length > 60) {
+    p2pRoomsHistory.length = 60;
+  }
+  if (globalTransactions.length > 100) {
+    globalTransactions.length = 100;
+  }
+  if (chatMessages.length > 60) {
+    chatMessages.length = 60;
+  }
+  if (playerReports.length > 40) {
+    playerReports.length = 40;
+  }
+  if (roundDisputes.length > 40) {
+    roundDisputes.length = 40;
+  }
+  if (adminGrants.length > 40) {
+    adminGrants.length = 40;
+  }
+  if (cashierDeposits.length > 50) {
+    cashierDeposits.length = 50;
+  }
+  if (cashierWithdrawals.length > 50) {
+    cashierWithdrawals.length = 50;
+  }
+
+  // 7. Heap Watchdog & Emergency Garbage Collection
+  try {
+    const mem = process.memoryUsage();
+    const heapUsedMB = Math.round(mem.heapUsed / 1024 / 1024);
+    if (heapUsedMB > 350) {
+      console.warn(`[MemoryWatchdog] High heap memory detected (${heapUsedMB} MB). Performing emergency array trim.`);
+      for (const uid in userActivityLogs) {
+        userActivityLogs[uid].length = Math.min(userActivityLogs[uid].length, 10);
+      }
+      for (const uid in userBetHistories) {
+        userBetHistories[uid].length = Math.min(userBetHistories[uid].length, 15);
+      }
+      for (const uid in mockUsers) {
+        if (mockUsers[uid]?.transactions) {
+          mockUsers[uid].transactions.length = Math.min(mockUsers[uid].transactions.length, 15);
+        }
+      }
+      if ((global as any).gc) {
+        (global as any).gc();
+      }
+    }
+  } catch {}
+}, 60 * 1000);
+memorySweepInterval.unref();
 
 app.get("/api/rooms", (_req, res) => {
   checkExpiredRooms();
@@ -2996,7 +3139,7 @@ app.post("/api/rooms/create", requireUser, (req, res) => {
   user.balance -= numAmount;
   
   // Log creation transaction
-  user.transactions.unshift({
+  addTransactionToUser(user, {
     id: `tx_p2p_create_${Date.now()}`,
     type: "withdraw",
     amount: numAmount,
@@ -3050,6 +3193,7 @@ app.post("/api/rooms/create", requireUser, (req, res) => {
 
   activeRooms.unshift(newRoom);
   p2pRoomsHistory.unshift(newRoom);
+  if (p2pRoomsHistory.length > 100) p2pRoomsHistory.pop();
   broadcast({ type: "ROOM_CREATED", room: newRoom });
 
   res.json({
@@ -3170,7 +3314,7 @@ app.post("/api/rooms/accept", requireUser, (req, res) => {
       if (creatorWon && creatorUser) {
         creatorUser.balance += winnerPayout;
         creatorUser.totalWon += (winnerPayout - room.amount);
-        creatorUser.transactions.unshift({
+        addTransactionToUser(creatorUser, {
           id: `tx_quick_win_${Date.now()}`,
           type: "win",
           amount: winnerPayout,
@@ -3180,7 +3324,7 @@ app.post("/api/rooms/accept", requireUser, (req, res) => {
       } else {
         acceptor.balance += winnerPayout;
         acceptor.totalWon += (winnerPayout - requiredAcceptorStake);
-        acceptor.transactions.unshift({
+        addTransactionToUser(acceptor, {
           id: `tx_quick_win_${Date.now()}`,
           type: "win",
           amount: winnerPayout,
@@ -3427,7 +3571,7 @@ app.post("/api/rooms/cancel", requireUser, (req, res) => {
   const user = mockUsers[userId];
   if (user) {
     user.balance += room.amount;
-    user.transactions.unshift({
+    addTransactionToUser(user, {
       id: `tx_room_cancel_${Date.now()}`,
       type: "refund",
       amount: room.amount,
@@ -3751,7 +3895,7 @@ app.post("/api/admin/disputes/:disputeId/resolve", requireAdmin, (req, res) => {
     }
     if (user) {
       user.balance += amt;
-      user.transactions.unshift({
+      addTransactionToUser(user, {
         id: `tx_dispute_refund_${Date.now()}`,
         type: "refund",
         amount: amt,
@@ -4047,7 +4191,7 @@ app.post("/api/admin/users/:userId/grant-deposit", requireAdmin, (req, res) => {
   }
 
   // Record in user transactions
-  user.transactions.unshift({
+  addTransactionToUser(user, {
     id: `tx_admin_grant_${Date.now()}`,
     type: "deposit",
     amount: num,
@@ -4288,7 +4432,7 @@ app.post("/api/admin/deposits/:id/approve", requireAdmin, (req, res) => {
   const user = mockUsers[dep.userId];
   if (user) {
     user.balance += dep.amount;
-    user.transactions.unshift({
+    addTransactionToUser(user, {
       id: `tx_dep_appr_${Date.now()}`,
       type: "deposit",
       amount: dep.amount,
@@ -4381,7 +4525,7 @@ app.post("/api/admin/withdrawals/:id/reject", requireAdmin, (req, res) => {
   const user = mockUsers[wdr.userId];
   if (user) {
     user.balance += wdr.amount;
-    user.transactions.unshift({
+    addTransactionToUser(user, {
       id: `tx_wdr_ref_${Date.now()}`,
       type: "refund",
       amount: wdr.amount,

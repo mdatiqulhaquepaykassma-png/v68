@@ -141,8 +141,6 @@ export const WinningSideConfetti = React.memo<WinningSideConfettiProps>(({
     return () => clearTimeout(timer);
   }, [side, activationKey, onComplete]);
 
-  if (!side) return null;
-
   const isDragon = side === "DRAGON";
   const isTiger = side === "TIGER";
 
@@ -154,7 +152,7 @@ export const WinningSideConfetti = React.memo<WinningSideConfettiProps>(({
     : "left-1/4 right-1/4 top-0 bottom-0";
 
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence>
       {side && (
         <motion.div
           key={`winning-confetti-${side}-${activationKey || "key"}`}

@@ -8,7 +8,7 @@
     "build": "vite build && npm run build:server",
     "build:server": "esbuild server.ts --bundle --platform=node --format=cjs --packages=external --outfile=server-dist/server.cjs",
     "prestart": "node -e \"if(!require('fs').existsSync('server-dist/server.cjs')){console.log('[STARTUP] server-dist/server.cjs missing, building...');require('child_process').execSync('npm run build',{stdio:'inherit'})}\"",
-    "start": "node -e \"if(!require('fs').existsSync('server-dist/server.cjs')){console.log('[STARTUP] server-dist/server.cjs missing, building...');require('child_process').execSync('npm run build',{stdio:'inherit'})}\" && node server-dist/server.cjs",
+    "start": "node -e \"if(!require('fs').existsSync('server-dist/server.cjs')){console.log('[STARTUP] server-dist/server.cjs missing, building...');require('child_process').execSync('npm run build',{stdio:'inherit'})}\" && node --max-old-space-size=384 server-dist/server.cjs",
     "clean": "rm -rf dist server-dist",
     "lint": "tsc --noEmit"
   },

@@ -245,7 +245,7 @@ export const Navbar = React.memo<NavbarProps>(({
             }`}
           >
             <Swords className="w-3.5 h-3.5" />
-            <span>1v1 Dual</span>
+            <span>1v1 Duel</span>
           </button>
 
           {/* INSTALL APP BUTTON (In the middle between DUAL and ELITE) */}

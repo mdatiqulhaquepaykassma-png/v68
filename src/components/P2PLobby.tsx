@@ -39,7 +39,8 @@ import { ReportPlayerModal } from './ReportPlayerModal';
 import { PlayerNotesModal } from './PlayerNotesModal';
 import { useNotificationSystem } from '../utils/useNotificationSystem';
 import { sound } from '../utils/audio';
-import { formatCurrency, getStoredCurrencyCode } from '../utils/currency';
+import { formatCurrency, getStoredCurrencyCode, getActiveCurrencySymbol } from '../utils/currency';
+import { PullToRefresh } from './PullToRefresh';
 
 interface P2PLobbyProps {
   user: UserWallet;
@@ -507,8 +508,26 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
     return 'border-cyan-500 text-cyan-400 bg-cyan-950/30';
   };
 
+  const handlePullRefresh = async () => {
+    await Promise.allSettled([
+      fetchRooms(),
+      fetchRecentMatches(),
+      (async () => {
+        try {
+          const walletRes = await fetch(`/api/wallet/${user.userId}`);
+          if (walletRes.ok) {
+            const walletData = await walletRes.json();
+            onUpdateWallet(walletData);
+          }
+        } catch {}
+      })(),
+    ]);
+  };
+
+  const currencySymbol = getActiveCurrencySymbol();
+
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-4 pb-16 px-1 sm:px-2">
+    <PullToRefresh onRefresh={handlePullRefresh} className="w-full max-w-5xl mx-auto space-y-4 pb-8 px-1 sm:px-2">
       
       {/* Floating In-App Banner Notification */}
       {activeBanner && (
@@ -562,7 +581,7 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
           }`}
         >
           <Swords className="w-3.5 h-3.5" />
-          <span>1v1 Dual Arena</span>
+          <span>1v1 Duel Arena</span>
         </button>
 
         <button
@@ -965,7 +984,7 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
                   </span>
                 </div>
 
-                <div className="space-y-2 max-h-[260px] overflow-y-auto no-scrollbar">
+                <div className="space-y-2">
                   {displayRecentMatches.map((match: any, idx: number) => {
                     const winnerSide = match.winner ? match.winner.toUpperCase() : 'DRAGON';
                     return (
@@ -1060,7 +1079,7 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
               </div>
 
               {/* ROOM CARDS LIST */}
-              <div className="space-y-3 max-h-[580px] overflow-y-auto pr-1">
+              <div className="space-y-3">
                 {isInitialLoading && rooms.length === 0 ? (
                   <div className="space-y-3">
                     {[1, 2, 3, 4, 5].map((i) => (
@@ -1408,7 +1427,7 @@ export const P2PLobby = React.memo<P2PLobbyProps>(({ user, onUpdateWallet }) => 
 
       {/* Clean Mobile End Spacer */}
       <div className="h-6 md:h-2" />
-    </div>
+    </PullToRefresh>
   );
 });
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, Sparkles, TrendingUp, Coins } from 'lucide-react';
 import { LeaderboardEntry } from '../types';
+import { PullToRefresh } from './PullToRefresh';
 
 interface LeaderboardProps {
   onOpenLiquidity?: () => void;
@@ -51,7 +52,7 @@ export const Leaderboard = React.memo<LeaderboardProps>(({ onOpenLiquidity, curr
   }, []);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-12">
+    <PullToRefresh onRefresh={fetchLeaderboard} className="max-w-4xl mx-auto space-y-6 pb-12">
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-neutral-900 via-neutral-900/90 to-neutral-900 border border-amber-500/30 rounded-3xl p-6 lg:p-8 shadow-xl text-center relative overflow-hidden">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -182,6 +183,6 @@ export const Leaderboard = React.memo<LeaderboardProps>(({ onOpenLiquidity, curr
         {/* Clean Mobile End Spacer */}
         <div className="h-6 md:h-2" />
       </div>
-    </div>
+    </PullToRefresh>
   );
 });

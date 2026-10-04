@@ -70,7 +70,7 @@ export const MobileBottomNav = React.memo<MobileBottomNavProps>(({
             </span>
           )}
         </div>
-        <span className="text-[9px] uppercase tracking-wider font-bold">Dual</span>
+        <span className="text-[9px] uppercase tracking-wider font-bold">Duel</span>
       </button>
 
       {/* 3. Install App (In the middle between DUAL and ELITE) */}

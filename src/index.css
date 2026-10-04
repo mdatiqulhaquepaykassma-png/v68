@@ -616,39 +616,28 @@ html, body, #root {
 
 .table-parallax-container {
   perspective: 1200px;
-  transform-style: preserve-3d;
 }
 
 .table-layer-pedestal {
-  transform: translate3d(calc(var(--tbl-parallax-x, 0px) * 0.25), calc(var(--tbl-parallax-y, 0px) * 0.25), -20px)
-    rotateX(calc(var(--tbl-tilt-x, 0deg) * 0.3))
-    rotateY(calc(var(--tbl-tilt-y, 0deg) * 0.3));
+  transform: translate3d(calc(var(--tbl-parallax-x, 0px) * 0.2), calc(var(--tbl-parallax-y, 0px) * 0.2), 0px);
   transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.4, 1);
-  transform-style: preserve-3d;
 }
 
 .table-layer-rim {
-  transform: translate3d(calc(var(--tbl-parallax-x, 0px) * 0.5), calc(var(--tbl-parallax-y, 0px) * 0.5), 0px)
-    rotateX(calc(var(--tbl-tilt-x, 0deg) * 0.55))
-    rotateY(calc(var(--tbl-tilt-y, 0deg) * 0.55));
+  transform: translate3d(calc(var(--tbl-parallax-x, 0px) * 0.35), calc(var(--tbl-parallax-y, 0px) * 0.35), 0px)
+    rotateX(calc(var(--tbl-tilt-x, 0deg) * 0.35))
+    rotateY(calc(var(--tbl-tilt-y, 0deg) * 0.35));
   transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.4, 1);
-  transform-style: preserve-3d;
 }
 
 .table-layer-felt {
-  transform: translate3d(calc(var(--tbl-parallax-x, 0px) * 0.8), calc(var(--tbl-parallax-y, 0px) * 0.8), 16px)
-    rotateX(calc(var(--tbl-tilt-x, 0deg) * 0.8))
-    rotateY(calc(var(--tbl-tilt-y, 0deg) * 0.8));
-  transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.4, 1);
-  transform-style: preserve-3d;
+  position: absolute;
+  inset: 0;
 }
 
 .table-layer-cards-ui {
-  transform: translate3d(calc(var(--tbl-parallax-x, 0px) * 1.15), calc(var(--tbl-parallax-y, 0px) * 1.15), 32px)
-    rotateX(var(--tbl-tilt-x, 0deg))
-    rotateY(var(--tbl-tilt-y, 0deg));
+  transform: translate3d(calc(var(--tbl-parallax-x, 0px) * 0.5), calc(var(--tbl-parallax-y, 0px) * 0.5), 0px);
   transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.4, 1);
-  transform-style: preserve-3d;
 }
 
 /* ========================================================================== */
@@ -810,57 +799,53 @@ html, body, #root {
 
 @keyframes laser-dealing-sweep {
   0% {
-    transform: translateX(-100%) skewX(-20deg);
+    left: -25%;
     opacity: 0;
   }
-  30% {
-    opacity: 0.75;
+  25% {
+    opacity: 0.85;
   }
-  70% {
-    opacity: 0.75;
+  75% {
+    opacity: 0.85;
   }
   100% {
-    transform: translateX(100%) skewX(-20deg);
+    left: 115%;
     opacity: 0;
   }
 }
 
-/* 1. BETTING PHASE: Warmer Amber / Golden Hearth Glow */
+/* 1. BETTING PHASE: Soft Warm Amber Radial Breathing Glow */
 .table-state-overlay-betting {
-  background: radial-gradient(ellipse at 50% 38%, rgba(245, 158, 11, 0.32) 0%, rgba(217, 119, 6, 0.20) 45%, rgba(180, 83, 9, 0.08) 75%, transparent 100%);
-  box-shadow: inset 0 0 85px rgba(245, 158, 11, 0.38), 0 0 55px rgba(251, 191, 36, 0.22);
+  background: radial-gradient(ellipse at 50% 45%, rgba(245, 158, 11, 0.22) 0%, rgba(217, 119, 6, 0.10) 50%, transparent 80%);
   mix-blend-mode: screen;
   animation: state-tint-pulse-amber 3.0s ease-in-out infinite;
   transform: translateZ(0);
   will-change: opacity;
 }
 
-/* Urgent Last 5s Countdown: Intensified Golden-Amber Glow */
+/* Urgent Last 5s Countdown: Soft Rhythmic Warm Glow */
 .table-state-overlay-betting-urgent {
-  background: radial-gradient(ellipse at 50% 38%, rgba(245, 158, 11, 0.48) 0%, rgba(234, 88, 12, 0.32) 48%, rgba(220, 38, 38, 0.15) 78%, transparent 100%);
-  box-shadow: inset 0 0 100px rgba(245, 158, 11, 0.6), 0 0 70px rgba(239, 68, 68, 0.4);
+  background: radial-gradient(ellipse at 50% 45%, rgba(245, 158, 11, 0.36) 0%, rgba(234, 88, 12, 0.20) 55%, transparent 85%);
   mix-blend-mode: screen;
   animation: state-tint-pulse-amber-urgent 1.2s ease-in-out infinite;
   transform: translateZ(0);
   will-change: opacity;
 }
 
-/* 2. DEALING PHASE: Cooler Blue / Ice Cyan / Electric Sapphire */
+/* 2. DEALING PHASE: Soft Ice Cyan / Sapphire Radial Breathing Glow */
 .table-state-overlay-dealing {
-  background: radial-gradient(ellipse at 50% 40%, rgba(6, 182, 212, 0.36) 0%, rgba(2, 132, 199, 0.25) 42%, rgba(3, 105, 161, 0.09) 75%, transparent 100%);
-  box-shadow: inset 0 0 90px rgba(6, 182, 212, 0.45), 0 0 65px rgba(56, 189, 248, 0.28);
+  background: radial-gradient(ellipse at 50% 45%, rgba(6, 182, 212, 0.26) 0%, rgba(2, 132, 199, 0.14) 52%, transparent 82%);
   mix-blend-mode: screen;
-  animation: state-tint-pulse-blue 2.2s ease-in-out infinite;
+  animation: state-tint-pulse-blue 2.4s ease-in-out infinite;
   transform: translateZ(0);
   will-change: opacity;
 }
 
-/* 3. PAYOUT SETTLEMENT PHASE: Deep Royal Red / Ruby Crimson */
+/* 3. PAYOUT SETTLEMENT PHASE: Soft Ruby Crimson Radial Breathing Glow */
 .table-state-overlay-settling {
-  background: radial-gradient(ellipse at 50% 38%, rgba(239, 68, 68, 0.46) 0%, rgba(185, 28, 28, 0.32) 48%, rgba(127, 29, 29, 0.14) 80%, transparent 100%);
-  box-shadow: inset 0 0 110px rgba(239, 68, 68, 0.65), 0 0 80px rgba(239, 68, 68, 0.42);
+  background: radial-gradient(ellipse at 50% 45%, rgba(239, 68, 68, 0.30) 0%, rgba(185, 28, 28, 0.15) 55%, transparent 85%);
   mix-blend-mode: screen;
-  animation: state-tint-pulse-red 1.8s ease-in-out infinite;
+  animation: state-tint-pulse-red 2.0s ease-in-out infinite;
   transform: translateZ(0);
   will-change: opacity;
 }
@@ -886,7 +871,8 @@ html, body, #root {
   flex-shrink: 0;
   flex: 1 1 calc(20% - 8px);
   min-width: 0;
-  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  /* Let Framer Motion manage transform/scale to avoid CSS animation frame conflicts */
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .bet-button:focus-visible {
@@ -907,13 +893,7 @@ html, body, #root {
 @media (min-width: 641px) {
   .bet-button {
     min-height: 44px;
-    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-  }
-
-  .bet-button:hover:not(:disabled) {
-    transform: scale(1.05);
-    background-color: #262626; /* neutral-800 */
-    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   }
 }
 

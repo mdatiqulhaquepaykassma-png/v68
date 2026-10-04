@@ -599,7 +599,7 @@ export default function App() {
         />
       </div>
 
-      <div className={`w-full flex-1 flex flex-col relative z-10 h-full max-h-full overflow-hidden min-h-0 ${activeTab === "game" ? "pb-14 md:pb-0" : "pb-20 md:pb-6"}`}>
+      <div className={`w-full flex-1 flex flex-col relative z-10 h-full max-h-full overflow-hidden min-h-0 ${activeTab === "game" ? "pb-14 md:pb-0" : "pb-0"}`}>
         {/* Inactivity Security Auto-Logout (30 mins) */}
         <AutoLogoutTimer onLogout={handleLogout} timeoutMinutes={30} warningMinutes={2} />
 
@@ -669,7 +669,7 @@ export default function App() {
         </AnimatePresence>
 
         {/* Gesture Swipe Container for Tab Navigation */}
-        <div {...bindTabSwipe()} className="w-full flex-1 flex flex-col relative touch-pan-y">
+        <div {...bindTabSwipe()} className="w-full flex-1 flex flex-col relative touch-pan-y min-h-0 overflow-hidden">
           <AnimatePresence mode="wait" initial={false} custom={tabDirection}>
             <motion.main
               key={activeTab}
@@ -678,10 +678,10 @@ export default function App() {
               initial={isInitialMount.current ? false : "initial"}
               animate="animate"
               exit="exit"
-              className={`w-full relative flex-1 h-full min-h-0 overflow-hidden flex flex-col ${
+              className={`w-full relative flex-1 h-full min-h-0 flex flex-col ${
                 activeTab === "game"
-                  ? "max-w-none p-0"
-                  : "max-w-7xl mx-auto px-1 sm:px-4 lg:px-8 py-1.5 sm:py-4 pb-20 md:pb-8 overflow-y-auto no-scrollbar"
+                  ? "max-w-none p-0 overflow-hidden"
+                  : "max-w-7xl mx-auto px-1.5 sm:px-4 lg:px-8 py-1.5 sm:py-3 pb-36 sm:pb-28 overflow-y-auto overscroll-y-contain custom-scrollbar touch-pan-y"
               }`}
             >
             {activeTab === "game" && (

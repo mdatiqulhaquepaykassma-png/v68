@@ -315,35 +315,56 @@ export const GameTable = React.memo<GameTableProps>(({
 
   const triggerFlyingChipAnimation = (side: string, amount: number) => {
     const chipId = `chip_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-    let target = { x: 50, y: 65 };
     const normSide = side.toUpperCase();
-    if (normSide === "DRAGON") target = { x: 22, y: 68 };
-    else if (normSide === "TIGER") target = { x: 78, y: 68 };
-    else if (normSide === "DRAGON_EVEN") target = { x: 10, y: 78 };
-    else if (normSide === "DRAGON_ODD") target = { x: 21, y: 78 };
-    else if (normSide === "DRAGON_SML") target = { x: 33, y: 78 };
-    else if (normSide === "DRAGON_BIG") target = { x: 44, y: 78 };
-    else if (normSide === "TIGER_BIG") target = { x: 56, y: 78 };
-    else if (normSide === "TIGER_SML") target = { x: 67, y: 78 };
-    else if (normSide === "TIGER_ODD") target = { x: 79, y: 78 };
-    else if (normSide === "TIGER_EVEN") target = { x: 90, y: 78 };
+
+    // Dynamically calculate target element center in real viewport pixels
+    let targetX = window.innerWidth * 0.5;
+    let targetY = window.innerHeight * 0.55;
+
+    const targetEl =
+      document.querySelector(`[data-bet-side="${normSide}"]`) ||
+      document.querySelector(`[data-card-slot="${normSide.toLowerCase()}"]`);
+
+    if (targetEl) {
+      const rect = targetEl.getBoundingClientRect();
+      targetX = rect.left + rect.width / 2;
+      targetY = rect.top + rect.height / 2;
+    } else {
+      if (normSide.includes("DRAGON")) {
+        targetX = window.innerWidth * 0.35;
+        targetY = window.innerHeight * 0.55;
+      } else if (normSide.includes("TIGER")) {
+        targetX = window.innerWidth * 0.65;
+        targetY = window.innerHeight * 0.55;
+      }
+    }
+
+    // Origin: active chip carousel button or bottom HUD center
+    let startX = window.innerWidth / 2;
+    let startY = window.innerHeight - 60;
+    const activeChipEl = document.querySelector('[data-chip-active="true"]');
+    if (activeChipEl) {
+      const sRect = activeChipEl.getBoundingClientRect();
+      startX = sRect.left + sRect.width / 2;
+      startY = sRect.top + sRect.height / 2;
+    }
 
     setFlyingChips((prev) => [
       ...prev,
       {
         id: chipId,
         amount,
-        startX: 50,
-        startY: 92,
-        targetX: target.x,
-        targetY: target.y,
+        startX,
+        startY,
+        targetX,
+        targetY,
         side: normSide,
       },
     ]);
 
     setTimeout(() => {
       setFlyingChips((prev) => prev.filter((c) => c.id !== chipId));
-    }, 700);
+    }, 650);
   };
 
   // UI helpers & Sheets
@@ -388,6 +409,17 @@ export const GameTable = React.memo<GameTableProps>(({
     tiger: "WIN" | "LOSS" | "TIE" | null;
     active: boolean;
   }>({ dragon: null, tiger: null, active: false });
+
+  // Staggered cinematic card dealing step tracking
+  const [dealingStep, setDealingStep] = useState<"IDLE" | "DEALING_CARDS" | "REVEAL_DRAGON" | "REVEAL_TIGER" | "WINNER_REVEALED">("IDLE");
+  const dealingTimersRef = useRef<NodeJS.Timeout[]>([]);
+
+  // Cleanup dealing timers on unmount
+  useEffect(() => {
+    return () => {
+      dealingTimersRef.current.forEach((t) => clearTimeout(t));
+    };
+  }, []);
 
   const [broadcastTime, setBroadcastTime] = useState<string>(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
 
@@ -442,14 +474,12 @@ export const GameTable = React.memo<GameTableProps>(({
         // Ignore unmeasured 0x0 or collapsed layout on reload
         if (width < 100 || height < 100) return;
 
-        // Calculate appropriate scale factor based on viewport container width and height
-        // Baseline: ~740px width and ~540px height corresponds to 1.0 scale
-        // When viewport is constrained (e.g. mobile portrait or landscape), calculate scale
-        const scaleByWidth = width / 740;
-        const scaleByHeight = height / 540;
+        // Proportional scale factor: never let cards become unreadable or microscopic on mobile
+        const scaleByWidth = width / 520;
+        const scaleByHeight = height / 440;
         const minScale = Math.min(scaleByWidth, scaleByHeight);
-        // Ensure scale stays within [0.55, 1.15] so cards never clip or overlap
-        const boundedScale = Math.min(Math.max(minScale, 0.55), 1.15);
+        // Ensure scale stays within [0.82, 1.08] so cards remain clear, prominent, and proportional
+        const boundedScale = Math.min(Math.max(minScale, 0.82), 1.08);
         setCardScale(Number(boundedScale.toFixed(3)));
       }
     });
@@ -705,27 +735,39 @@ export const GameTable = React.memo<GameTableProps>(({
               .catch(() => {});
           }
         } else if (data.type === "ROUND_DEALING" && data.tableSlug === selectedTableSlug) {
-          // Card swoosh & granular snap delivery for Dragon and Tiger
+          // Clear any pending dealing timers
+          dealingTimersRef.current.forEach((t) => clearTimeout(t));
+          dealingTimersRef.current = [];
+
+          setDealingStep("DEALING_CARDS");
+          // Staggered dealing sound sequence synced with card delivery and reveals
           sound.playCardSlide();
 
-          if (data.dragonCard) {
-            setTimeout(() => {
+          const t1 = setTimeout(() => {
+            sound.playCardSlide();
+          }, 450);
+
+          const t2 = setTimeout(() => {
+            setDealingStep("REVEAL_DRAGON");
+            if (data.dragonCard) {
               const dRank = data.dragonCard.rank || data.dragonCard.display || data.dragonCard.value;
               sound.playGranularCardSnap(dRank, "DRAGON");
-            }, 240);
-          }
+            }
+          }, 1200);
 
-          // Staggered delivery for Tiger (swoosh + snap)
-          setTimeout(() => {
-            sound.playCardSlide();
-          }, 480);
-
-          if (data.tigerCard) {
-            setTimeout(() => {
+          const t3 = setTimeout(() => {
+            setDealingStep("REVEAL_TIGER");
+            if (data.tigerCard) {
               const tRank = data.tigerCard.rank || data.tigerCard.display || data.tigerCard.value;
               sound.playGranularCardSnap(tRank, "TIGER");
-            }, 720);
-          }
+            }
+          }, 2000);
+
+          const t4 = setTimeout(() => {
+            setDealingStep("WINNER_REVEALED");
+          }, 2550);
+
+          dealingTimersRef.current = [t1, t2, t3, t4];
 
           setCurrentRound((prev) => {
             if (!prev) return prev;
@@ -859,7 +901,7 @@ export const GameTable = React.memo<GameTableProps>(({
 
             if (didWin && payout > 0) {
               setShowWinCelebration(true);
-              setTimeout(() => setShowWinCelebration(false), 2400);
+              setTimeout(() => setShowWinCelebration(false), 2800);
 
               // Trigger Canvas Confetti Particle Blast on Win / Big Win!
               const isBigWin = payout >= 500 || matchedAmount >= 200;
@@ -985,6 +1027,9 @@ export const GameTable = React.memo<GameTableProps>(({
             })
             .catch(() => {});
         } else if (data.type === "NEW_ROUND" && data.tableSlug === selectedTableSlug) {
+          dealingTimersRef.current.forEach((t) => clearTimeout(t));
+          dealingTimersRef.current = [];
+          setDealingStep("IDLE");
           setCurrentRound(data.round);
           setCurrentRoundBets([]);
           soundManager.triggerRoundInitiation();
@@ -1678,9 +1723,9 @@ export const GameTable = React.memo<GameTableProps>(({
                     rotate: (i % 2 === 0 ? 1 : -1) * (360 + i * 30),
                   }}
                   transition={{
-                    duration: 2.2 + (i % 5) * 0.3,
+                    duration: 1.8 + (i % 4) * 0.2,
                     ease: [0.22, 1, 0.36, 1],
-                    delay: (i % 8) * 0.05,
+                    delay: (i % 6) * 0.04,
                   }}
                   className="absolute text-2xl sm:text-4xl drop-shadow-[0_0_20px_rgba(251,191,36,1)] select-none"
                 >
@@ -1767,33 +1812,39 @@ export const GameTable = React.memo<GameTableProps>(({
           <motion.div
             key={chip.id}
             initial={{
-              left: `${chip.startX}%`,
-              top: `${chip.startY}%`,
-              scale: 1.4,
+              x: chip.startX - 20,
+              y: chip.startY - 20,
+              scale: 0.5,
               rotate: 0,
-              opacity: 1,
+              opacity: 0,
             }}
             animate={{
-              left: `${chip.targetX}%`,
-              top: `${chip.targetY}%`,
-              scale: [1.4, 1.25, 0.95, 1],
+              x: chip.targetX - 20,
+              y: chip.targetY - 20,
+              scale: [0.5, 1.25, 1],
               rotate: [0, -180, -360],
-              opacity: [1, 1, 1, 0.9],
+              opacity: [0, 1, 1],
             }}
             exit={{ opacity: 0, scale: 0.8 }}
             transition={{
-              duration: 0.65,
-              ease: [0.16, 1, 0.3, 1],
+              duration: 0.52,
+              ease: [0.19, 1, 0.22, 1],
             }}
-            className="fixed z-[160] -translate-x-1/2 -translate-y-1/2 pointer-events-none transform-gpu"
+            className="fixed top-0 left-0 z-[160] pointer-events-none transform-gpu"
           >
             <div className="relative">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-red-600 via-amber-400 to-amber-600 border-4 border-amber-300 shadow-[0_0_25px_rgba(245,158,11,0.9)] flex items-center justify-center text-neutral-950 font-black text-[9px] sm:text-xs font-mono ring-2 ring-amber-950">
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-dashed border-amber-950/70 bg-white/20 backdrop-blur-xs flex items-center justify-center font-mono">
+              <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-full border-2 shadow-[0_0_25px_rgba(245,158,11,0.9)] flex items-center justify-center font-black text-[9px] sm:text-[10px] font-mono ring-2 ring-black/80 ${
+                chip.side.includes("DRAGON")
+                  ? "bg-gradient-to-br from-red-600 via-rose-500 to-red-700 border-amber-300 text-white shadow-red-500/80"
+                  : "bg-gradient-to-br from-amber-500 via-yellow-400 to-amber-600 border-white text-neutral-950 shadow-amber-500/80"
+              }`}>
+                <div className="w-6.5 h-6.5 sm:w-8 sm:h-8 rounded-full border border-dashed border-current/40 bg-white/20 backdrop-blur-xs flex items-center justify-center font-mono">
                   {formatAmt(chip.amount, true)}
                 </div>
               </div>
-              <div className="absolute -inset-1 rounded-full bg-amber-400/30 blur-md -z-10 animate-ping" />
+              <div className={`absolute -inset-2 rounded-full border-2 animate-impact-ripple pointer-events-none ${
+                chip.side.includes("DRAGON") ? "border-red-400" : "border-amber-400"
+              }`} />
             </div>
           </motion.div>
         ))}
@@ -2151,37 +2202,21 @@ export const GameTable = React.memo<GameTableProps>(({
           )}
         </AnimatePresence>
 
-        {/* CENTER LAYER: 3D PERSPECTIVE OVAL CASINO TABLE & REAL CARDS */}
-        <div className="relative w-full flex-1 min-h-0 flex items-center justify-center my-auto py-0 sm:py-0.5 overflow-hidden">
+        {/* CENTER LAYER: FULL-WIDTH LIVE CASINO STUDIO TABLE */}
+        <div className="relative w-full flex-1 min-h-[210px] xs:min-h-[240px] sm:min-h-[280px] flex items-center justify-center my-auto py-0.5 sm:py-1 px-1 sm:px-2 overflow-visible">
            
-           {/* 3D OVAL TABLE CONTAINER - Responsive to Screen Resolution with Physical Multi-Layer Parallax */}
+           {/* FULL-WIDTH 3D OVAL TABLE CONTAINER - Seamlessly anchored without bottom gaps */}
            <div 
              ref={tableRef}
-             className="table-parallax-container relative w-full max-w-full lg:max-w-5xl h-full max-h-[16vh] xs:max-h-[20vh] sm:max-h-[30vh] md:max-h-[38vh] lg:max-h-[44vh] aspect-[2.4/1] sm:aspect-[2.35/1] flex items-center justify-center select-none"
+             className="table-parallax-container relative w-full max-w-5xl h-full min-h-[200px] xs:min-h-[230px] sm:min-h-[270px] md:min-h-[310px] max-h-[46vh] sm:max-h-[50vh] flex items-center justify-center select-none mx-auto"
            >
-              
-              {/* Layer 1: Carved Luxury Metallic Pedestal Base */}
+              {/* Main Oval Table Felt with Deep Mahogany Wood Rim & Brass Inlays */}
               <div 
-                className="table-layer-pedestal absolute -bottom-6 sm:-bottom-8 w-[92%] max-w-3xl h-16 sm:h-24 rounded-b-[70px] xs:rounded-b-[90px] sm:rounded-b-[130px] border-x-2 sm:border-x-4 border-b-2 sm:border-b-4 border-amber-600/40 shadow-[0_45px_90px_rgba(0,0,0,0.98)] overflow-hidden pointer-events-none"
+                className="table-layer-rim relative w-full h-full rounded-[36px] xs:rounded-[52px] sm:rounded-[90px] md:rounded-[140px] overflow-hidden flex flex-col items-center justify-between p-1.5 xs:p-2 sm:p-4 md:p-5 transition-all shadow-[0_20px_50px_rgba(0,0,0,0.95)]"
                 style={{
-                  background: "radial-gradient(ellipse at 50% 0%, #2a221b 0%, #15110d 50%, #080605 100%)",
-                }}
-              >
-                 {/* Traditional Golden Engraved Pattern Trim */}
-                 <div className="absolute inset-x-0 top-1.5 sm:top-2 h-10 opacity-35 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-400/25 via-amber-200/10 to-transparent flex items-center justify-center">
-                    <span className="text-[10px] sm:text-[11px] font-mono tracking-[1.2em] sm:tracking-[1.5em] text-amber-300 uppercase select-none drop-shadow">
-                      ❖ ❖ ❖ ❖ ❖ ❖ ❖ ❖ ❖ ❖ ❖ ❖ ❖
-                    </span>
-                 </div>
-              </div>
-
-              {/* Layer 2: Main Oval Table Felt with Deep Mahogany Wood Rim & Brass Inlays */}
-              <div 
-                className="table-layer-rim relative w-full h-full rounded-[60px] xs:rounded-[90px] sm:rounded-[200px] lg:rounded-[240px] overflow-hidden flex flex-col items-center justify-between p-1.5 xs:p-2 sm:p-5 transition-all"
-                style={{
-                  background: "radial-gradient(ellipse at 50% 36%, #c51d1d 0%, #991b1b 38%, #751414 72%, #380707 100%)",
-                  border: "6px sm:border-[12px] solid #1f0d06",
-                  boxShadow: "inset 0 0 60px rgba(0,0,0,0.85), 0 20px 50px rgba(0,0,0,0.95), 0 0 0 1.5px #d97706, 0 0 0 3px #78350f, 0 0 25px rgba(185,28,28,0.35)",
+                  background: "radial-gradient(ellipse at 50% 38%, #ba1a1a 0%, #901616 38%, #6a1010 72%, #320505 100%)",
+                  border: "5px sm:border-[10px] solid #1a0a05",
+                  boxShadow: "inset 0 0 50px rgba(0,0,0,0.85), 0 15px 40px rgba(0,0,0,0.9), 0 0 0 1.5px #d97706, 0 0 0 3px #78350f",
                 }}
               >
                  {/* Layer 3: Felt Texture, Noise Wear & Tear Overlay, Candlelight & Spotlight Glow */}
@@ -2245,7 +2280,7 @@ export const GameTable = React.memo<GameTableProps>(({
 
                  {/* TOP SECTION: BURN CARD (LEFT) & DECK SHOE (CENTER) */}
                  <div 
-                   className="table-layer-cards-ui w-full flex items-start justify-between relative z-10 px-8 sm:px-16 pt-1"
+                   className="table-layer-cards-ui w-full flex items-start justify-between relative z-10 px-3 xs:px-6 sm:px-14 pt-1 sm:pt-2"
                    style={{
                      transform: `scale(${Math.min(cardScale, 1)})`,
                      transformOrigin: "top center",
@@ -2253,7 +2288,7 @@ export const GameTable = React.memo<GameTableProps>(({
                  >
                     
                     {/* Top-Left: Face-down Burn / Discard Card with Criss-Cross Pattern */}
-                    <div className="w-10 h-15 sm:w-13 sm:h-18 rounded-lg bg-neutral-900 border-2 border-amber-400/80 shadow-2xl rotate-[-15deg] overflow-hidden relative flex items-center justify-center transition-transform hover:rotate-[-12deg]">
+                    <div className="w-8 h-12 xs:w-10 xs:h-15 sm:w-13 sm:h-18 rounded-lg bg-neutral-900 border-2 border-amber-400/80 shadow-2xl rotate-[-15deg] overflow-hidden relative flex items-center justify-center transition-transform hover:rotate-[-12deg] shrink-0">
                        {/* Criss-Cross Diamond Card Back Pattern */}
                        <div 
                          className="absolute inset-0 opacity-85" 
@@ -2265,8 +2300,8 @@ export const GameTable = React.memo<GameTableProps>(({
                     </div>
 
                     {/* Top-Center: Live Dealing Deck Shoe with Ultra-Realistic 3D Card Ejection Physics */}
-                    <div data-card-slot="shoe" className="relative flex flex-col items-center group">
-                       <div className="w-13 h-17 sm:w-16 sm:h-20 rounded-xl bg-gradient-to-b from-neutral-900 via-neutral-950 to-black border-2 border-amber-400 shadow-[0_12px_30px_rgba(0,0,0,0.95)] overflow-visible relative flex items-center justify-center">
+                    <div data-card-slot="shoe" className="relative flex flex-col items-center group shrink-0">
+                       <div className="w-11 h-15 xs:w-13 xs:h-17 sm:w-16 sm:h-20 rounded-xl bg-gradient-to-b from-neutral-900 via-neutral-950 to-black border-2 border-amber-400 shadow-[0_12px_30px_rgba(0,0,0,0.95)] overflow-visible relative flex items-center justify-center">
                           {/* Criss-Cross Diamond Gold Foil Card Back Pattern */}
                           <div 
                             className="absolute inset-0 opacity-90 rounded-xl overflow-hidden" 
@@ -2297,42 +2332,15 @@ export const GameTable = React.memo<GameTableProps>(({
                             )}
                           </AnimatePresence>
 
-                          {/* Dual High-Speed 3D Flying Card Ejection Arcs on Deal */}
+                          {/* Live Dealing Ejection Flare when Cards slide out */}
                           <AnimatePresence>
                             {currentRound?.status === "DEALING" && (
-                              <>
-                                {/* Card 1 -> Shoots Left to Dragon with Spark Trail */}
-                                <motion.div
-                                  initial={{ x: 0, y: 0, scale: 0.9, rotateZ: 0, opacity: 1 }}
-                                  animate={{
-                                    x: [-5, -60, -125],
-                                    y: [0, 35, 80],
-                                    scale: [0.9, 1.05, 0.85],
-                                    rotateZ: [0, -14, -28],
-                                    opacity: [1, 1, 0],
-                                  }}
-                                  transition={{ duration: 0.52, ease: [0.16, 1, 0.3, 1] }}
-                                  className="absolute inset-0 rounded-xl bg-gradient-to-br from-red-600 via-rose-500 to-black border-2 border-amber-300 shadow-[0_0_25px_rgba(239,68,68,1)] pointer-events-none z-40 flex items-center justify-center"
-                                >
-                                  <span className="text-xs">🐉</span>
-                                </motion.div>
-
-                                {/* Card 2 -> Shoots Right to Tiger with Spark Trail */}
-                                <motion.div
-                                  initial={{ x: 0, y: 0, scale: 0.9, rotateZ: 0, opacity: 1 }}
-                                  animate={{
-                                    x: [5, 60, 125],
-                                    y: [0, 35, 80],
-                                    scale: [0.9, 1.05, 0.85],
-                                    rotateZ: [0, 14, 28],
-                                    opacity: [1, 1, 0],
-                                  }}
-                                  transition={{ duration: 0.52, delay: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                                  className="absolute inset-0 rounded-xl bg-gradient-to-br from-amber-500 via-yellow-400 to-black border-2 border-amber-300 shadow-[0_0_25px_rgba(251,191,36,1)] pointer-events-none z-40 flex items-center justify-center"
-                                >
-                                  <span className="text-xs">🐯</span>
-                                </motion.div>
-                              </>
+                              <motion.div
+                                initial={{ opacity: 0, scaleY: 0 }}
+                                animate={{ opacity: [0, 1, 0.5, 1, 0], scaleY: [0, 1.2, 0.8, 1.1, 0] }}
+                                transition={{ duration: 1.2, ease: "easeOut" }}
+                                className="absolute -bottom-2 inset-x-1 h-3 rounded-full bg-gradient-to-r from-red-500 via-amber-300 to-cyan-400 blur-[2px] pointer-events-none z-30"
+                              />
                             )}
                           </AnimatePresence>
                        </div>
@@ -2343,7 +2351,7 @@ export const GameTable = React.memo<GameTableProps>(({
                     </div>
 
                     {/* Top-Right: Stylized Animated Dealer Avatar */}
-                    <div className="relative z-20 flex items-center justify-center -mt-2 sm:-mt-3">
+                    <div className="relative z-20 flex items-center justify-center -mt-2 sm:-mt-3 scale-80 xs:scale-90 sm:scale-100 origin-top-right shrink-0">
                        <DealerAvatar
                          gameStatus={currentRound?.status || "BETTING"}
                          winnerResult={currentRound?.result}
@@ -2410,39 +2418,46 @@ export const GameTable = React.memo<GameTableProps>(({
 
                  {/* DEALT PLAYING CARDS & DEDICATED FELT BOXES (Centerstage) */}
                  <div 
-                   className="relative z-20 flex items-center justify-center gap-2 xs:gap-4 sm:gap-12 md:gap-16 my-auto max-w-full px-1"
+                   className="relative z-20 flex items-center justify-center gap-2 xs:gap-3 sm:gap-8 md:gap-12 my-auto max-w-full px-1"
                    style={{
                      transform: `scale(${cardScale})`,
                      transformOrigin: "center center",
                    }}
                  >
                     {/* DRAGON FELT CARD BOX */}
-                    <div data-card-slot="dragon" className="flex flex-col items-center gap-1">
+                    <div data-card-slot="dragon" className="flex flex-col items-center gap-1 shrink-0">
                        <motion.div
                          onClick={() => handleSelectSide("DRAGON")}
-                         whileHover={{ scale: 1.04 }}
-                         whileTap={{ scale: 0.96 }}
-                         className={`relative w-18 h-26 xs:w-20 xs:h-28 sm:w-24 sm:h-34 rounded-xl xs:rounded-2xl flex items-center justify-center cursor-pointer transition-all duration-300 ${
+                         whileHover={{ scale: 1.03 }}
+                         whileTap={{ scale: 0.97 }}
+                         className={`relative w-16 h-22 xs:w-18 xs:h-26 sm:w-22 sm:h-32 rounded-xl xs:rounded-2xl flex items-center justify-center cursor-pointer transition-[border-color,background-color,box-shadow] duration-300 ${
                            currentRound?.result === "DRAGON" && (currentRound.status === "SETTLING" || currentRound.status === "COMPLETED")
                              ? "ring-4 ring-red-500 shadow-[0_0_40px_rgba(239,68,68,0.95)] bg-red-950/40"
+                             : slotPulse.dragon === "WIN"
+                             ? "ring-4 ring-red-500 shadow-[0_0_35px_rgba(239,68,68,0.9)] bg-red-950/40 animate-pulse"
+                             : slotPulse.dragon === "LOSS"
+                             ? "opacity-50 grayscale border-neutral-700 bg-neutral-950/40"
                              : selectedSide === "DRAGON"
                              ? "ring-4 ring-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.85)] bg-amber-950/30"
                              : "border-2 border-amber-400/60 bg-black/50 hover:border-amber-300 hover:bg-black/60 shadow-inner"
                          }`}
                          style={{
-                           boxShadow: currentRound?.result === "DRAGON" ? "0 0 40px rgba(239,68,68,0.9), inset 0 0 25px rgba(239,68,68,0.5)" : "inset 0 0 20px rgba(0,0,0,0.85)",
+                           boxShadow: currentRound?.result === "DRAGON" || slotPulse.dragon === "WIN" ? "0 0 40px rgba(239,68,68,0.9), inset 0 0 25px rgba(239,68,68,0.5)" : "inset 0 0 20px rgba(0,0,0,0.85)",
                          }}
                        >
                           {/* Inner Felt Golden Border Line */}
                           <div className="absolute inset-1.5 rounded-xl border border-amber-400/35 pointer-events-none" />
 
-                          <AnimatePresence mode="wait">
+                          <AnimatePresence>
                             {currentRound?.dragonCard ? (
                               <PlayingCardComponent 
                                 key={`dragon-${currentRound.roundId || currentRound.dragonCard.display}`}
                                 card={currentRound.dragonCard} 
                                 side="DRAGON" 
                                 isWinner={currentRound.result === "DRAGON"} 
+                                gameStatus={currentRound.status}
+                                isAlreadyRevealed={currentRound.status === "SETTLING" || currentRound.status === "COMPLETED"}
+                                showWinnerCelebration={dealingStep === "WINNER_REVEALED" || currentRound.status === "SETTLING" || currentRound.status === "COMPLETED"}
                               />
                             ) : (
                               <motion.div
@@ -2497,10 +2512,27 @@ export const GameTable = React.memo<GameTableProps>(({
                           animate={{ scale: 1, opacity: 1 }}
                           className="flex flex-col items-center justify-center text-center py-1"
                         >
-                          <span className="px-3 py-1 rounded-full bg-gradient-to-r from-neutral-950 via-neutral-900 to-neutral-950 border border-amber-400/80 text-[10px] sm:text-xs font-black text-amber-300 uppercase tracking-wider shadow-[0_0_15px_rgba(251,191,36,0.6)] whitespace-nowrap animate-pulse flex items-center gap-1.5">
-                            <Swords className="w-3.5 h-3.5 text-amber-400 animate-spin" />
-                            <span>DEALING CARDS</span>
-                          </span>
+                          {dealingStep === "DEALING_CARDS" ? (
+                            <span className="px-3 py-1 rounded-full bg-gradient-to-r from-neutral-950 via-neutral-900 to-neutral-950 border border-amber-400/80 text-[10px] sm:text-xs font-black text-amber-300 uppercase tracking-wider shadow-[0_0_15px_rgba(251,191,36,0.6)] whitespace-nowrap animate-pulse flex items-center gap-1.5">
+                              <Swords className="w-3.5 h-3.5 text-amber-400 animate-spin" />
+                              <span>DEALING CARDS...</span>
+                            </span>
+                          ) : dealingStep === "REVEAL_DRAGON" ? (
+                            <span className="px-3 py-1 rounded-full bg-gradient-to-r from-red-950 via-neutral-900 to-red-950 border border-red-400/80 text-[10px] sm:text-xs font-black text-red-300 uppercase tracking-wider shadow-[0_0_15px_rgba(239,68,68,0.6)] whitespace-nowrap animate-pulse flex items-center gap-1.5">
+                              <span>🐉</span>
+                              <span>DRAGON: {currentRound?.dragonCard?.display || "..."}</span>
+                            </span>
+                          ) : dealingStep === "REVEAL_TIGER" ? (
+                            <span className="px-3 py-1 rounded-full bg-gradient-to-r from-amber-950 via-neutral-900 to-amber-950 border border-amber-400/80 text-[10px] sm:text-xs font-black text-amber-300 uppercase tracking-wider shadow-[0_0_15px_rgba(251,191,36,0.6)] whitespace-nowrap animate-pulse flex items-center gap-1.5">
+                              <span>🐯</span>
+                              <span>TIGER: {currentRound?.tigerCard?.display || "..."}</span>
+                            </span>
+                          ) : (
+                            <span className="px-3 py-1 rounded-full bg-gradient-to-r from-neutral-950 via-amber-950 to-neutral-950 border border-amber-400 text-[10px] sm:text-xs font-black text-amber-300 uppercase tracking-wider shadow-[0_0_20px_rgba(251,191,36,0.8)] whitespace-nowrap flex items-center gap-1.5">
+                              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-bounce" />
+                              <span>CALCULATING RESULT</span>
+                            </span>
+                          )}
                           <span className="text-[7px] font-black text-amber-200/90 uppercase tracking-widest mt-0.5 font-mono">
                             HIGH CARD WINS
                           </span>
@@ -2540,32 +2572,39 @@ export const GameTable = React.memo<GameTableProps>(({
                     </div>
 
                     {/* TIGER FELT CARD BOX */}
-                    <div data-card-slot="tiger" className="flex flex-col items-center gap-1">
+                    <div data-card-slot="tiger" className="flex flex-col items-center gap-1 shrink-0">
                        <motion.div
                          onClick={() => handleSelectSide("TIGER")}
-                         whileHover={{ scale: 1.04 }}
-                         whileTap={{ scale: 0.96 }}
-                         className={`relative w-18 h-26 xs:w-20 xs:h-28 sm:w-24 sm:h-34 rounded-xl xs:rounded-2xl flex items-center justify-center cursor-pointer transition-all duration-300 ${
+                         whileHover={{ scale: 1.03 }}
+                         whileTap={{ scale: 0.97 }}
+                         className={`relative w-16 h-22 xs:w-18 xs:h-26 sm:w-22 sm:h-32 rounded-xl xs:rounded-2xl flex items-center justify-center cursor-pointer transition-[border-color,background-color,box-shadow] duration-300 ${
                            currentRound?.result === "TIGER" && (currentRound.status === "SETTLING" || currentRound.status === "COMPLETED")
                              ? "ring-4 ring-amber-500 shadow-[0_0_40px_rgba(245,158,11,0.95)] bg-amber-950/40"
+                             : slotPulse.tiger === "WIN"
+                             ? "ring-4 ring-amber-500 shadow-[0_0_35px_rgba(245,158,11,0.9)] bg-amber-950/40 animate-pulse"
+                             : slotPulse.tiger === "LOSS"
+                             ? "opacity-50 grayscale border-neutral-700 bg-neutral-950/40"
                              : selectedSide === "TIGER"
                              ? "ring-4 ring-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.85)] bg-amber-950/30"
                              : "border-2 border-amber-400/60 bg-black/50 hover:border-amber-300 hover:bg-black/60 shadow-inner"
                          }`}
                          style={{
-                           boxShadow: currentRound?.result === "TIGER" ? "0 0 40px rgba(245,158,11,0.9), inset 0 0 25px rgba(245,158,11,0.5)" : "inset 0 0 20px rgba(0,0,0,0.85)",
+                           boxShadow: currentRound?.result === "TIGER" || slotPulse.tiger === "WIN" ? "0 0 40px rgba(245,158,11,0.9), inset 0 0 25px rgba(245,158,11,0.5)" : "inset 0 0 20px rgba(0,0,0,0.85)",
                          }}
                        >
                           {/* Inner Felt Golden Border Line */}
                           <div className="absolute inset-1.5 rounded-xl border border-amber-400/35 pointer-events-none" />
 
-                          <AnimatePresence mode="wait">
+                          <AnimatePresence>
                             {currentRound?.tigerCard ? (
                               <PlayingCardComponent 
                                 key={`tiger-${currentRound.roundId || currentRound.tigerCard.display}`}
                                 card={currentRound.tigerCard} 
                                 side="TIGER" 
                                 isWinner={currentRound.result === "TIGER"} 
+                                gameStatus={currentRound.status}
+                                isAlreadyRevealed={currentRound.status === "SETTLING" || currentRound.status === "COMPLETED"}
+                                showWinnerCelebration={dealingStep === "WINNER_REVEALED" || currentRound.status === "SETTLING" || currentRound.status === "COMPLETED"}
                               />
                             ) : (
                               <motion.div
@@ -2693,13 +2732,20 @@ export const GameTable = React.memo<GameTableProps>(({
                  
                  {/* DRAGON TAB (5 cols) */}
                  <motion.button
+                   data-bet-side="DRAGON"
                    whileHover={{ scale: 1.01 }}
                    whileTap={{ scale: 0.98 }}
                    onClick={() => handleSelectSide("DRAGON")}
-                   animate={selectedSide === "DRAGON" ? { scale: [1, 1.05, 0.98, 1] } : { scale: 1 }}
-                    disabled={isPlacingBet !== null || !isBettingOpen}
-                    className={`bet-button col-span-5 relative rounded-xl p-2 sm:p-3 min-h-[60px] xs:min-h-[66px] sm:min-h-[80px] relative rounded-xl p-1.5 sm:p-3 flex flex-col justify-between border-2 transition-all cursor-pointer overflow-hidden select-none ${
-                     selectedSide === "DRAGON"
+                   animate={selectedSide === "DRAGON" ? { scale: [1, 1.03, 1] } : { scale: 1 }}
+                   disabled={isPlacingBet !== null || !isBettingOpen}
+                   className={`bet-button col-span-5 relative rounded-xl p-1.5 sm:p-2.5 min-h-[60px] xs:min-h-[66px] sm:min-h-[76px] flex flex-col justify-between border-2 cursor-pointer overflow-hidden select-none transition-colors duration-200 ${
+                     currentRound?.result === "DRAGON" && (currentRound.status === "SETTLING" || currentRound.status === "COMPLETED")
+                       ? "bg-gradient-to-r from-red-600 via-rose-700 to-red-800 border-red-300 shadow-[0_0_25px_rgba(239,68,68,0.85)] text-white"
+                       : slotPulse.dragon === "WIN"
+                       ? "bg-gradient-to-r from-red-700 via-rose-800 to-red-900 border-red-400 shadow-[0_0_20px_rgba(239,68,68,0.7)] text-white animate-pulse"
+                       : slotPulse.dragon === "LOSS"
+                       ? "opacity-50 grayscale border-neutral-800 bg-neutral-950/70 text-neutral-400"
+                       : selectedSide === "DRAGON"
                        ? "bg-gradient-to-r from-red-700 via-red-800 to-red-900 border-red-400 shadow-[0_0_20px_rgba(239,68,68,0.6)] text-white"
                        : "bg-gradient-to-r from-red-950/80 to-red-900/50 border-red-700/40 text-red-200 hover:border-red-400"
                    } ${!isBettingOpen ? "opacity-60 cursor-not-allowed" : ""}`}
@@ -2736,11 +2782,11 @@ export const GameTable = React.memo<GameTableProps>(({
                        <AnimatePresence>
                          {currentRound?.dragonCard && (
                            <motion.div
-                             initial={{ scale: 0, x: 20, rotate: 15 }}
-                             animate={{ scale: 1, x: 0, rotate: 0 }}
-                             exit={{ scale: 0, x: 20 }}
+                             initial={{ scale: 0, x: 20, y: "-50%", rotate: 15 }}
+                             animate={{ scale: 1, x: 0, y: "-50%", rotate: 0 }}
+                             exit={{ scale: 0, x: 20, y: "-50%" }}
                              transition={{ type: "spring", stiffness: 350, damping: 20 }}
-                             className="absolute right-0 top-1/2 -translate-y-1/2 bg-white text-neutral-950 font-black px-1.5 py-0.5 rounded shadow-lg text-[10px] sm:text-xs font-mono border border-neutral-300 z-10"
+                             className="absolute right-0 top-1/2 bg-white text-neutral-950 font-black px-1.5 py-0.5 rounded shadow-lg text-[10px] sm:text-xs font-mono border border-neutral-300 z-10"
                            >
                               {currentRound.dragonCard.display}
                            </motion.div>
@@ -2774,13 +2820,20 @@ export const GameTable = React.memo<GameTableProps>(({
 
                  {/* TIGER TAB (5 cols) */}
                  <motion.button
+                   data-bet-side="TIGER"
                    whileHover={{ scale: 1.01 }}
                    whileTap={{ scale: 0.98 }}
                    onClick={() => handleSelectSide("TIGER")}
-                   animate={selectedSide === "TIGER" ? { scale: [1, 1.05, 0.98, 1] } : { scale: 1 }}
-                    disabled={isPlacingBet !== null || !isBettingOpen}
-                    className={`bet-button col-span-5 relative rounded-xl p-2 sm:p-3 min-h-[60px] xs:min-h-[66px] sm:min-h-[80px] relative rounded-xl p-1.5 sm:p-3 flex flex-col justify-between border-2 transition-all cursor-pointer overflow-hidden select-none ${
-                     selectedSide === "TIGER"
+                   animate={selectedSide === "TIGER" ? { scale: [1, 1.03, 1] } : { scale: 1 }}
+                   disabled={isPlacingBet !== null || !isBettingOpen}
+                   className={`bet-button col-span-5 relative rounded-xl p-1.5 sm:p-2.5 min-h-[60px] xs:min-h-[66px] sm:min-h-[76px] flex flex-col justify-between border-2 cursor-pointer overflow-hidden select-none transition-colors duration-200 ${
+                     currentRound?.result === "TIGER" && (currentRound.status === "SETTLING" || currentRound.status === "COMPLETED")
+                       ? "bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700 border-yellow-200 shadow-[0_0_25px_rgba(245,158,11,0.85)] text-white"
+                       : slotPulse.tiger === "WIN"
+                       ? "bg-gradient-to-r from-amber-700 via-amber-800 to-yellow-900 border-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.7)] text-white animate-pulse"
+                       : slotPulse.tiger === "LOSS"
+                       ? "opacity-50 grayscale border-neutral-800 bg-neutral-950/70 text-neutral-400"
+                       : selectedSide === "TIGER"
                        ? "bg-gradient-to-r from-amber-700 via-amber-800 to-yellow-900 border-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.6)] text-white"
                        : "bg-gradient-to-r from-amber-950/80 to-yellow-950/50 border-amber-700/40 text-amber-200 hover:border-amber-400"
                    } ${!isBettingOpen ? "opacity-60 cursor-not-allowed" : ""}`}
@@ -2800,11 +2853,11 @@ export const GameTable = React.memo<GameTableProps>(({
                        <AnimatePresence>
                          {currentRound?.tigerCard && (
                            <motion.div
-                             initial={{ scale: 0, x: -20, rotate: -15 }}
-                             animate={{ scale: 1, x: 0, rotate: 0 }}
-                             exit={{ scale: 0, x: -20 }}
+                             initial={{ scale: 0, x: -20, y: "-50%", rotate: -15 }}
+                             animate={{ scale: 1, x: 0, y: "-50%", rotate: 0 }}
+                             exit={{ scale: 0, x: -20, y: "-50%" }}
                              transition={{ type: "spring", stiffness: 350, damping: 20 }}
-                             className="absolute left-0 top-1/2 -translate-y-1/2 bg-white text-neutral-950 font-black px-1.5 py-0.5 rounded shadow-lg text-[10px] sm:text-xs font-mono border border-neutral-300 z-10"
+                             className="absolute left-0 top-1/2 bg-white text-neutral-950 font-black px-1.5 py-0.5 rounded shadow-lg text-[10px] sm:text-xs font-mono border border-neutral-300 z-10"
                            >
                               {currentRound.tigerCard.display}
                            </motion.div>
@@ -2886,10 +2939,11 @@ export const GameTable = React.memo<GameTableProps>(({
                        return (
                          <motion.button
                            key={chip.val}
+                           data-chip-active={isSelected ? "true" : "false"}
                            whileHover={{ y: -2, scale: 1.08 }}
                            whileTap={{ scale: 0.95 }}
                            onClick={() => handleChipSelect(chipAmount)}
-                           className={`w-6 h-6 xs:w-6.5 xs:h-6.5 sm:w-7.5 sm:h-7.5 md:w-8.5 md:h-8.5 shrink-0 rounded-full flex items-center justify-center font-black text-[7.5px] xs:text-[8px] sm:text-[9px] md:text-[9.5px] font-mono transition-transform bg-gradient-to-br border border-white/90 sm:border-2 cursor-pointer relative ${
+                           className={`w-6 h-6 xs:w-6.5 xs:h-6.5 sm:w-7.5 sm:h-7.5 md:w-8.5 md:h-8.5 shrink-0 rounded-full flex items-center justify-center font-black text-[7.5px] xs:text-[8px] sm:text-[9px] md:text-[9.5px] font-mono bg-gradient-to-br border border-white/90 sm:border-2 cursor-pointer relative ${
                              chip.bg
                            } ${isSelected ? "ring-2 sm:ring-4 ring-amber-400 scale-110 shadow-[0_0_16px_rgba(251,191,36,0.95)] z-10" : ""}`}
                          >
@@ -2935,39 +2989,6 @@ export const GameTable = React.memo<GameTableProps>(({
 
          </div>
 
-         {/* GPU Hardware-Accelerated Parabolic Flying Chips Layer */}
-         <div className="absolute inset-0 pointer-events-none z-50 overflow-hidden">
-           {flyingChips.map((chip) => {
-             const isDragon = chip.side.includes("DRAGON");
-             return (
-               <div
-                 key={chip.id}
-                 className="absolute animate-chip-fly flex items-center justify-center pointer-events-none"
-                 style={{
-                   left: `${chip.targetX}%`,
-                   top: `${chip.targetY}%`,
-                   transform: "translate(-50%, -50%)",
-                 }}
-               >
-                 <div
-                   className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full border-2 border-dashed flex items-center justify-center font-mono font-black text-[9px] sm:text-[10px] shadow-2xl ${
-                     isDragon
-                       ? "bg-red-600 border-amber-300 text-white shadow-[0_0_15px_rgba(239,68,68,0.9)]"
-                       : "bg-amber-500 border-yellow-200 text-neutral-950 shadow-[0_0_15px_rgba(245,158,11,0.9)]"
-                   }`}
-                 >
-                   ৳{chip.amount}
-                 </div>
-                 {/* Landing Impact Shockwave */}
-                 <div
-                   className={`absolute inset-0 rounded-full border-2 animate-impact-ripple pointer-events-none ${
-                     isDragon ? "border-red-500" : "border-amber-400"
-                   }`}
-                 />
-               </div>
-             );
-           })}
-         </div>
 
       </div>
 
