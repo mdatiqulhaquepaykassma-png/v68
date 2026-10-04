@@ -14,9 +14,7 @@ import {
 } from "lucide-react";
 import { UserWallet } from "../types";
 import { formatCurrency, CURRENCIES, getStoredCurrencyCode } from "../utils/currency";
-import { motion, AnimatePresence } from "framer-motion";
 import { BrandLogo } from "./BrandLogo";
-import { SignalStrengthIndicator } from "./SignalStrengthIndicator";
 
 interface NavbarProps {
   user: UserWallet | null;
@@ -170,61 +168,6 @@ export const Navbar = React.memo<NavbarProps>(({
               <span className="text-[7px] sm:text-[7.5px] font-bold text-amber-400 uppercase tracking-widest mt-0.5">DRAGON TIGER</span>
             </div>
           </div>
-
-          {/* Table Switcher Dropdown */}
-          <div ref={dropdownRef} className="relative ml-0.5 sm:ml-2">
-            <button
-              onClick={() => setTableDropdownOpen(!tableDropdownOpen)}
-              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[9px] sm:text-[10px] font-bold text-amber-300 transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
-            >
-              <span>{currentTable.icon}</span>
-              <span className="uppercase tracking-wider font-mono hidden xs:inline">{currentTable.name}</span>
-              <ChevronDown className={`w-3 h-3 text-neutral-400 transition-transform ${tableDropdownOpen ? 'rotate-180' : ''}`} />
-            </button>
-
-            <AnimatePresence>
-              {tableDropdownOpen && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute left-0 top-full mt-2 w-60 sm:w-64 bg-neutral-900/95 backdrop-blur-2xl border border-amber-500/30 rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.9)] py-2 z-50 overflow-hidden"
-                >
-                  <div className="px-3 py-1 border-b border-white/5 text-[9px] font-mono font-bold text-neutral-400 uppercase">
-                    Select Table Arena
-                  </div>
-                  {tableOptions.map((t) => (
-                    <button
-                      key={t.id}
-                      onClick={() => {
-                        onSelectTable(t.id);
-                        setTableDropdownOpen(false);
-                      }}
-                      className={`w-full text-left px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-all flex items-center justify-between cursor-pointer ${
-                        selectedTable === t.id 
-                          ? "bg-amber-500/15 text-amber-300 border-l-2 border-amber-400" 
-                          : "text-neutral-400 hover:bg-white/5 hover:text-white"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm">{t.icon}</span>
-                        <div>
-                          <div className="font-mono text-white text-[11px]">{t.name}</div>
-                          <div className="text-[8px] text-neutral-400 lowercase font-mono">
-                            {t.minBetFormatted} - {t.maxBetFormatted}
-                          </div>
-                        </div>
-                      </div>
-                      <span className="text-[9px] font-mono font-bold text-emerald-400 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30">
-                        {t.speed}
-                      </span>
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
         </div>
 
         {/* Zone 2: Navigation Tabs (Desktop & Tablet) */}
@@ -280,9 +223,6 @@ export const Navbar = React.memo<NavbarProps>(({
 
         {/* Zone 3: Telemetry, Wallet & Controls */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          
-          {/* Real-Time WebSocket Signal Strength & Latency Indicator */}
-          <SignalStrengthIndicator lang={lang} />
 
           {/* Sound Toggle Button (Hidden on Mobile, available in Menu) */}
           {onToggleSound && (

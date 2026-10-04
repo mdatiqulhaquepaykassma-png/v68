@@ -7,12 +7,16 @@ interface SignalStrengthIndicatorProps {
   lang?: "bn" | "en";
   className?: string;
   showTextOnMobile?: boolean;
+  align?: "left" | "right";
+  compact?: boolean;
 }
 
 export const SignalStrengthIndicator: React.FC<SignalStrengthIndicatorProps> = React.memo(({
   lang = "bn",
   className = "",
   showTextOnMobile = false,
+  align = "right",
+  compact = false,
 }) => {
   const { latency, jitter, status, quality, bars, nodeName } = useWebSocketLatency(2500);
   const [showTooltip, setShowTooltip] = useState<boolean>(false);
@@ -94,7 +98,7 @@ export const SignalStrengthIndicator: React.FC<SignalStrengthIndicatorProps> = R
       <button
         type="button"
         onClick={() => setShowTooltip((prev) => !prev)}
-        className={`flex items-center gap-1.5 px-2 py-1 rounded-xl border ${styleConfig.border} ${styleConfig.bg} ${styleConfig.glow} transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md select-none group`}
+        className={`flex items-center ${compact ? "gap-1 px-1.5 py-0.5 rounded-lg h-6" : "gap-1.5 px-2 py-1 rounded-xl"} border ${styleConfig.border} ${styleConfig.bg} ${styleConfig.glow} transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md select-none group`}
         title={
           latency !== null
             ? `WebSocket Latency: ${latency}ms (${styleConfig.label})`
@@ -102,14 +106,14 @@ export const SignalStrengthIndicator: React.FC<SignalStrengthIndicatorProps> = R
         }
       >
         {/* Signal Bars Icon Graphic */}
-        <div className="flex items-end gap-[2px] h-3.5 w-4 pb-[1px] justify-center">
+        <div className={`flex items-end gap-[1.5px] ${compact ? "h-3 w-3.5" : "h-3.5 w-4"} pb-[1px] justify-center`}>
           {[1, 2, 3, 4].map((barIndex) => {
             const isActive = bars >= barIndex;
-            const heights = ["h-1", "h-1.5", "h-2.5", "h-3.5"];
+            const heights = compact ? ["h-1", "h-1.5", "h-2", "h-2.5"] : ["h-1", "h-1.5", "h-2.5", "h-3.5"];
             return (
               <span
                 key={barIndex}
-                className={`w-[2.5px] rounded-full transition-all duration-300 ${heights[barIndex - 1]} ${
+                className={`w-[2px] rounded-full transition-all duration-300 ${heights[barIndex - 1]} ${
                   isActive ? styleConfig.barActive : "bg-neutral-700/50"
                 }`}
               />
@@ -120,7 +124,7 @@ export const SignalStrengthIndicator: React.FC<SignalStrengthIndicatorProps> = R
         {/* Latency Readout in ms */}
         <div className="flex items-center gap-0.5">
           <span
-            className={`font-mono text-[10px] sm:text-[11px] font-black tracking-tight ${styleConfig.text} ${
+            className={`font-mono ${compact ? "text-[9px]" : "text-[10px] sm:text-[11px]"} font-black tracking-tight ${styleConfig.text} ${
               showTextOnMobile ? "inline" : "hidden xs:inline"
             }`}
           >
@@ -169,7 +173,7 @@ export const SignalStrengthIndicator: React.FC<SignalStrengthIndicatorProps> = R
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.95 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
-            className="absolute top-full right-0 mt-2 z-50 w-64 p-3 bg-neutral-950/95 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-[0_15px_35px_rgba(0,0,0,0.85)] text-neutral-200 text-xs space-y-2.5"
+            className={`absolute top-full ${align === "left" ? "left-0" : "right-0"} mt-2 z-50 w-64 p-3 bg-neutral-950/95 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-[0_15px_35px_rgba(0,0,0,0.85)] text-neutral-200 text-xs space-y-2.5`}
           >
             {/* Header / Status Title */}
             <div className="flex items-center justify-between border-b border-white/10 pb-2">

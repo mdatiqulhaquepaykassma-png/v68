@@ -53,6 +53,7 @@ import { useActiveCurrency, formatCurrency } from "../utils/currency";
 import { usePerformanceMode } from "../utils/performance";
 import { useAdaptiveAsset } from "../utils/performanceAssetDelivery";
 import { LiveChat } from "./LiveChat";
+import { SignalStrengthIndicator } from "./SignalStrengthIndicator";
 import { LiveBetFeed } from "./LiveBetFeed";
 import { LiveAction } from "./LiveAction";
 import { LiveBetTransparencyModal } from "./LiveBetTransparencyModal";
@@ -117,6 +118,7 @@ interface GameTableProps {
   onToggleBalanceType?: () => void;
   onNavigateToP2P?: () => void;
   onRequireLogin?: () => void;
+  onSelectTable?: (table: "express" | "classic" | "vip") => void;
   lang?: "bn" | "en";
 }
 
@@ -132,8 +134,10 @@ export const GameTable = React.memo<GameTableProps>(({
   onToggleBalanceType,
   onNavigateToP2P,
   onRequireLogin,
+  onSelectTable,
   lang = "bn",
 }) => {
+  const [tableSelectorOpen, setTableSelectorOpen] = useState<boolean>(false);
   useRenderTracker("GameTable");
   const soundManager = useSoundManager();
   const perf = usePerformanceMode();
@@ -2711,13 +2715,17 @@ export const GameTable = React.memo<GameTableProps>(({
          <div className="relative z-30 w-full shrink-0 flex flex-col lg:flex-row items-stretch gap-1 sm:gap-1.5 bg-black/90 backdrop-blur-2xl p-1 sm:p-1.5 rounded-xl sm:rounded-2xl border border-white/10 shadow-2xl touch-manipulation">
             
             {/* LEFT: ROADMAP MATRIX (Bead Road & Big Road) */}
-            <div className="w-full lg:w-[170px] xl:w-[200px] shrink-0 flex flex-col justify-between bg-black/90 backdrop-blur-xl p-1 sm:p-2 rounded-xl border border-white/10 shadow-lg sticky top-1 transition-all overflow-hidden">
+            <div className="w-full lg:w-[240px] xl:w-[270px] 2xl:w-[290px] shrink-0 flex flex-col justify-between bg-black/90 backdrop-blur-xl p-1 sm:p-2 rounded-xl border border-white/10 shadow-lg sticky top-1 transition-all overflow-visible z-40">
                {/* Header Stats Counter */}
                <div className="flex items-center justify-between pb-1 sm:pb-1.5 border-b border-white/10 text-xs font-mono font-bold">
                   <div className="flex items-center gap-1 sm:gap-1.5">
                      <span className="text-amber-400 font-black tracking-tight text-[10px] sm:text-xs">
                        #{currentRound?.roundNumber || 96}
                      </span>
+                     
+                     {/* Real-Time WebSocket Latency & Signal Strength Indicator */}
+                     <SignalStrengthIndicator lang={lang} align="left" showTextOnMobile compact />
+
                      <button
                        onClick={() => setShowRoadmapPanel(!showRoadmapPanel)}
                        className="px-1.5 py-0.5 rounded-md bg-white/10 hover:bg-white/20 text-[9px] text-amber-300 font-mono active:scale-95 transition-all cursor-pointer flex items-center gap-0.5"
@@ -2726,6 +2734,83 @@ export const GameTable = React.memo<GameTableProps>(({
                        <span className="text-[8px]">{showRoadmapPanel ? "▲" : "▼"}</span>
                        <span className="text-[8px] uppercase tracking-wider hidden xs:inline">Road</span>
                      </button>
+
+                     {/* Bet History Button */}
+                     {onOpenBetHistory && (
+                       <button
+                         type="button"
+                         onClick={() => {
+                           sound.playButtonClick();
+                           onOpenBetHistory();
+                         }}
+                         className="px-1.5 py-0.5 rounded-md bg-white/10 hover:bg-white/20 border border-white/10 text-[9px] text-amber-300 font-mono active:scale-95 transition-all cursor-pointer flex items-center gap-1"
+                         title={lang === "bn" ? "বেট হিস্টোরি" : "Bet History"}
+                       >
+                         <History className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+                         <span className="text-[8px] uppercase tracking-wider hidden xs:inline">Hist</span>
+                       </button>
+                     )}
+
+                     {/* Table Switcher Button directly inside Roadmap Header */}
+                     {onSelectTable && (
+                       <div className="relative">
+                         <button
+                           type="button"
+                           onClick={() => {
+                             sound.playButtonClick();
+                             setTableSelectorOpen((prev) => !prev);
+                           }}
+                           className="px-1.5 py-0.5 rounded-md bg-gradient-to-r from-amber-500/25 via-yellow-500/35 to-amber-500/25 hover:from-amber-500/40 hover:to-yellow-500/50 border border-amber-400/70 text-[9px] font-black text-amber-300 font-mono flex items-center gap-1 shadow-[0_0_8px_rgba(245,158,11,0.3)] active:scale-95 transition-all cursor-pointer"
+                           title={lang === "bn" ? "টেবিল পরিবর্তন করুন" : "Switch Table Arena"}
+                         >
+                           <span>{selectedTableSlug === "express" ? "⚡" : selectedTableSlug === "classic" ? "🎯" : "👑"}</span>
+                           <span className="uppercase tracking-wider font-mono hidden xxs:inline">{selectedTableSlug}</span>
+                           <ChevronDown className={`w-2.5 h-2.5 text-amber-400 transition-transform ${tableSelectorOpen ? "rotate-180" : ""}`} />
+                         </button>
+
+                         <AnimatePresence>
+                           {tableSelectorOpen && (
+                             <motion.div
+                               initial={{ opacity: 0, y: -6, scale: 0.95 }}
+                               animate={{ opacity: 1, y: 0, scale: 1 }}
+                               exit={{ opacity: 0, y: -6, scale: 0.95 }}
+                               transition={{ duration: 0.15 }}
+                               className="absolute left-0 top-full mt-1.5 z-50 w-52 bg-neutral-950/95 backdrop-blur-2xl border border-amber-500/40 rounded-xl shadow-[0_15px_35px_rgba(0,0,0,0.9)] p-1.5 space-y-1"
+                             >
+                               <div className="px-2 py-1 text-[8.5px] font-mono font-bold text-neutral-400 uppercase border-b border-white/10">
+                                 {lang === "bn" ? "টেবিল নির্বাচন করুন" : "Select Table Arena"}
+                               </div>
+                               {[
+                                 { id: "express", name: "Express Speed", icon: "⚡", speed: "10s" },
+                                 { id: "classic", name: "Classic Sanctum", icon: "🎯", speed: "15s" },
+                                 { id: "vip", name: "VIP Diamond", icon: "👑", speed: "20s" },
+                               ].map((tbl) => (
+                                 <button
+                                   key={tbl.id}
+                                   type="button"
+                                   onClick={() => {
+                                     sound.playButtonClick();
+                                     onSelectTable(tbl.id as "express" | "classic" | "vip");
+                                     setTableSelectorOpen(false);
+                                   }}
+                                   className={`w-full text-left px-2 py-1.5 rounded-lg text-[9.5px] font-bold uppercase tracking-wider transition-all flex items-center justify-between cursor-pointer ${
+                                     selectedTableSlug === tbl.id
+                                       ? "bg-amber-500/20 text-amber-300 border border-amber-400/50"
+                                       : "text-neutral-400 hover:bg-white/10 hover:text-white"
+                                   }`}
+                                 >
+                                   <div className="flex items-center gap-1.5">
+                                     <span>{tbl.icon}</span>
+                                     <span className="font-mono">{tbl.name}</span>
+                                   </div>
+                                   <span className="text-[8px] font-mono text-emerald-400 font-black">{tbl.speed}</span>
+                                 </button>
+                               ))}
+                             </motion.div>
+                           )}
+                         </AnimatePresence>
+                       </div>
+                     )}
                      <button
                        onClick={() => {
                          sound.playButtonClick();
@@ -2745,17 +2830,17 @@ export const GameTable = React.memo<GameTableProps>(({
                         <span className="tabular-nums">{liveClockTime}</span>
                       </span>
                     )}
-                    <span className="text-red-300 bg-red-950/80 border border-red-500/30 px-1 sm:px-1.5 py-0.5 rounded flex items-center gap-0.5 sm:gap-1 font-bold text-[8px] sm:text-[10px]">
+                    <span className="text-red-300 bg-red-950/80 border border-red-500/40 px-1.5 py-0.5 rounded flex items-center gap-1 font-bold text-[8.5px] sm:text-[9.5px]">
                       <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block animate-pulse" />
-                      {roadmap.filter(r => r.result === "DRAGON").length || 47}
+                      D:{roadmap.filter(r => r.result === "DRAGON").length}
                     </span>
-                    <span className="text-amber-300 bg-amber-950/80 border border-amber-500/30 px-1 sm:px-1.5 py-0.5 rounded flex items-center gap-0.5 sm:gap-1 font-bold text-[8px] sm:text-[10px]">
+                    <span className="text-amber-300 bg-amber-950/80 border border-amber-500/40 px-1.5 py-0.5 rounded flex items-center gap-1 font-bold text-[8.5px] sm:text-[9.5px]">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block animate-pulse" />
-                      {roadmap.filter(r => r.result === "TIGER").length || 45}
+                      T:{roadmap.filter(r => r.result === "TIGER").length}
                     </span>
-                    <span className="text-cyan-300 bg-cyan-950/80 border border-cyan-500/30 px-1 sm:px-1.5 py-0.5 rounded flex items-center gap-0.5 sm:gap-1 font-bold text-[8px] sm:text-[10px]">
+                    <span className="text-cyan-300 bg-cyan-950/80 border border-cyan-500/40 px-1.5 py-0.5 rounded flex items-center gap-1 font-bold text-[8.5px] sm:text-[9.5px]">
                       <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 inline-block" />
-                      {roadmap.filter(r => r.result === "TIE").length || 4}
+                      Tie:{roadmap.filter(r => r.result === "TIE").length}
                     </span>
                  </div>
               </div>

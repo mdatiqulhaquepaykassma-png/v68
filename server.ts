@@ -1332,18 +1332,7 @@ wss.on("connection", (ws) => {
       }
       if (data.type === "IDENTIFY") {
         const sid = String(data.sessionId || "").trim();
-        const uid = String(data.userId || "").trim();
-        let session = sid ? getSession(sid) : null;
-
-        // Self-healing session restore if user is valid
-        if (!session && uid && mockUsers[uid]) {
-          const deviceId = deriveDeviceId(undefined, uid);
-          const created = createSessionEvictingOthers(uid, deviceId, "Web App", "");
-          session = created.session;
-          try {
-            ws.send(JSON.stringify({ type: "SESSION_RESTORED", sessionId: session.sessionId }));
-          } catch {}
-        }
+        const session = sid ? getSession(sid) : null;
 
         if (!session) {
           return;
@@ -1450,22 +1439,8 @@ function requireUser(req: express.Request, res: express.Response, next: express.
     (typeof req.headers["x-session-id"] === "string" ? req.headers["x-session-id"] : null) ||
     bearerToken ||
     (typeof req.body?.sessionId === "string" ? req.body.sessionId : null);
-  const headerUserId = typeof req.headers["x-user-id"] === "string" ? req.headers["x-user-id"] : null;
-  const bodyUserId = typeof req.body?.userId === "string" ? req.body.userId : null;
 
-  let session = sid ? getSession(sid) : null;
-
-  // Auto-restore session for known active user if in-memory session was wiped on server reload
-  if (!session && (headerUserId || bodyUserId)) {
-    const targetUid = headerUserId || bodyUserId;
-    if (targetUid && mockUsers[targetUid]) {
-      const deviceId = deriveDeviceId(req, req.body?.deviceId);
-      const deviceLabel = describeDevice(req);
-      const created = createSessionEvictingOthers(targetUid, deviceId, deviceLabel, req.ip || "");
-      session = created.session;
-      trustDevice(targetUid, deviceId, deviceLabel);
-    }
-  }
+  const session = sid ? getSession(sid) : null;
 
   if (!session) {
     return res.status(401).json({
@@ -2030,6 +2005,9 @@ app.post("/api/auth/logout", (req, res) => {
     readCookie(req, "player_session") ||
     (typeof req.headers["x-session-id"] === "string" ? req.headers["x-session-id"] : null) ||
     (typeof req.body?.sessionId === "string" ? req.body.sessionId : null);
+  const targetUserId =
+    (typeof req.body?.userId === "string" ? req.body.userId : null) ||
+    (typeof req.headers["x-user-id"] === "string" ? req.headers["x-user-id"] : null);
 
   if (sid) {
     const session = getSession(sid);
@@ -2037,8 +2015,18 @@ app.post("/api/auth/logout", (req, res) => {
       revokeUserSessions(session.userId);
     }
   }
-  res.clearCookie("player_session", { path: "/" });
-  res.json({ success: true });
+  if (targetUserId) {
+    revokeUserSessions(targetUserId);
+  }
+
+  res.clearCookie("player_session", {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  });
+  res.setHeader("Set-Cookie", "player_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax");
+  res.json({ success: true, message: "Logged out successfully" });
 });
 
 app.get(["/api/user/devices", "/api/user/devices/:userId"], requireUser, (req, res) => {

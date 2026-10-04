@@ -47,13 +47,19 @@ export default function App() {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const sid = localStorage.getItem("player_session_id") || "";
-        const savedUserId = localStorage.getItem("dt_user_id") || "";
-        const headers: Record<string, string> = {};
-        if (sid) headers["x-session-id"] = sid;
-        if (savedUserId) headers["x-user-id"] = savedUserId;
+        const sid = localStorage.getItem("player_session_id");
+        if (!sid) {
+          localStorage.removeItem("dt_user_id");
+          localStorage.removeItem("dt_username");
+          setUser(null);
+          return;
+        }
 
-        const res = await fetch("/api/auth/me", { headers });
+        const res = await fetch("/api/auth/me", {
+          headers: { "x-session-id": sid },
+          credentials: "include",
+        });
+
         if (res.ok) {
           const data = await res.json();
           if (data.success && data.user) {
@@ -61,9 +67,18 @@ export default function App() {
             if (data.sessionId) {
               localStorage.setItem("player_session_id", data.sessionId);
             }
+            return;
           }
         }
-      } catch {}
+
+        // Clean up on invalid or expired session
+        localStorage.removeItem("player_session_id");
+        localStorage.removeItem("dt_user_id");
+        localStorage.removeItem("dt_username");
+        setUser(null);
+      } catch {
+        // Leave guest on network error
+      }
     };
     checkSession();
   }, []);
@@ -345,15 +360,6 @@ export default function App() {
     }
   );
 
-  // Check localStorage for saved user session on mount
-  useEffect(() => {
-    const savedUserId = localStorage.getItem("dt_user_id");
-    const savedUsername = localStorage.getItem("dt_username");
-    if (savedUserId && savedUsername) {
-      fetchUser(savedUserId, savedUsername);
-    }
-  }, []);
-
   const [currentRoute, setCurrentRoute] = useState<string>(() => {
     return window.location.pathname + window.location.hash;
   });
@@ -418,17 +424,26 @@ export default function App() {
   };
 
   const handleLogout = async () => {
+    const sid = localStorage.getItem("player_session_id") || "";
+    const currentUid = user?.userId || localStorage.getItem("dt_user_id") || "";
+
     try {
-      const sid = localStorage.getItem("player_session_id") || "";
       await fetch("/api/auth/logout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: sid }),
+        headers: {
+          "Content-Type": "application/json",
+          ...(sid ? { "x-session-id": sid } : {}),
+          ...(currentUid ? { "x-user-id": currentUid } : {}),
+        },
+        credentials: "include",
+        body: JSON.stringify({ sessionId: sid, userId: currentUid }),
       });
     } catch {}
+
     localStorage.removeItem("dt_user_id");
     localStorage.removeItem("dt_username");
     localStorage.removeItem("player_session_id");
+    sessionStorage.clear();
     setUser(null);
   };
 
@@ -740,6 +755,7 @@ export default function App() {
                   onToggleBalanceType={handleToggleBalanceType}
                   onNavigateToP2P={() => handleTabChange("p2p")}
                   onRequireLogin={() => setAuthScreenMode("signin")}
+                  onSelectTable={handleSelectTableWithTransition}
                   lang={lang}
                 />
               </motion.div>

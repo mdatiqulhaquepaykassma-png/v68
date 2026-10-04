@@ -122,6 +122,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           username: username.trim(),
           password,
@@ -165,6 +166,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       const res = await fetch("/api/auth/verify-device", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           username: username.trim(),
           code: otpCode.trim(),
