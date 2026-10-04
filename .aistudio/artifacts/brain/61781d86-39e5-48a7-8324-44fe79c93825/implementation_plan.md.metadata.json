@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan to fix invisible live clock on mobile GameTable view by placing the clock directly inside the GameTable visible header and HUD bar without negative off-screen offset.",
-  "updatedAt":  "2026-10-04T07:22:46.230884119Z",
+  "summary":  "Stabilize card key props and simplify 3D flip animation without conflicting opacity triggers to eliminate card jumping and flickering during gameplay deals.",
+  "updatedAt":  "2026-10-04T07:45:52.066118968Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

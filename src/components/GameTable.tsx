@@ -2497,7 +2497,7 @@ export const GameTable = React.memo<GameTableProps>(({
                           <AnimatePresence>
                             {currentRound?.dragonCard ? (
                               <PlayingCardComponent 
-                                key={`dragon-${currentRound.roundId || currentRound.dragonCard.display}`}
+                                key="dragon-card"
                                 card={currentRound.dragonCard} 
                                 side="DRAGON" 
                                 isWinner={currentRound.result === "DRAGON"} 
@@ -2644,7 +2644,7 @@ export const GameTable = React.memo<GameTableProps>(({
                           <AnimatePresence>
                             {currentRound?.tigerCard ? (
                               <PlayingCardComponent 
-                                key={`tiger-${currentRound.roundId || currentRound.tigerCard.display}`}
+                                key="tiger-card"
                                 card={currentRound.tigerCard} 
                                 side="TIGER" 
                                 isWinner={currentRound.result === "TIGER"} 

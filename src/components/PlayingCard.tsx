@@ -186,10 +186,8 @@ export const PlayingCard = React.memo<PlayingCardProps>(({
           style={{
             backfaceVisibility: "hidden",
             WebkitBackfaceVisibility: "hidden",
-            transform: "translateZ(1px)",
-            opacity: flipped ? 0 : 1,
+            transform: "rotateY(0deg)",
             pointerEvents: flipped ? "none" : "auto",
-            transition: isSettled ? "none" : "opacity 0.16s ease",
           }}
           className="absolute inset-0 w-full h-full rounded-xl bg-neutral-950 border-2 border-amber-500/60 shadow-2xl flex flex-col items-center justify-center p-1"
         >
@@ -224,10 +222,8 @@ export const PlayingCard = React.memo<PlayingCardProps>(({
           style={{
             backfaceVisibility: "hidden",
             WebkitBackfaceVisibility: "hidden",
-            transform: "rotateY(180deg) translateZ(1px)",
-            opacity: flipped ? 1 : 0,
+            transform: "rotateY(180deg)",
             pointerEvents: flipped ? "auto" : "none",
-            transition: isSettled ? "none" : "opacity 0.16s ease",
           }}
           className={`absolute inset-0 w-full h-full rounded-xl bg-white border shadow-2xl flex flex-col justify-between p-1.5 xs:p-2 sm:p-2.5 transition-shadow duration-300 ${
             canShowWinner
