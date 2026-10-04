@@ -63,6 +63,14 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
+// NTP Server Timestamp Endpoint for Precision Time Sync
+app.get("/api/time", (_req, res) => {
+  res.status(200).json({
+    serverTime: Date.now(),
+    iso: new Date().toISOString(),
+  });
+});
+
 // Redirect clean /admin and /admin/* to hash routing /#/admin to avoid server-side 404
 app.get(["/admin", "/admin/*"], (req, res) => {
   if (req.originalUrl.includes("/login")) {

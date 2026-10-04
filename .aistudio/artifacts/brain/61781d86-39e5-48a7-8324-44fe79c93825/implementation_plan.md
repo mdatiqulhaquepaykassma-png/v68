@@ -1,31 +1,23 @@
-# Implementation Plan: P2P Lobby Cleanup & Memory Management
+# Implementation Plan: Fix Mobile GameTable Live Clock Visibility
 
-## Problem Statement
-When switching away from the P2P tab or unmounting the `P2PLobby` component, background intervals, active WebSocket listeners, and transient modal/matchmaking states can persist in memory or cause redundant state updates on unmounted components.
+## Cause Analysis
+The live clock was positioned using negative top offset (`-top-9`) outside the bottom HUD container. On mobile viewports, the outer GameTable container has `overflow-hidden`, which clips and hides elements positioned outside their parent container boundaries.
 
 ---
 
 ## Proposed Changes
 
-### 1. Dedicated WebSocket Listener with Full Teardown (`src/components/P2PLobby.tsx`)
-- Add a dedicated `useEffect` hook in `P2PLobby.tsx` that establishes a WebSocket subscription for live P2P events (`ROOM_CREATED`, `ROOM_UPDATED`, `ROOM_CANCELLED`, `ROOM_EXPIRED`, `P2P_MATCHED`, `DUEL_UPDATE`).
-- In the return cleanup function:
-  - Set `isMounted = false` to prevent late state updates.
-  - Explicitly nullify all event handlers (`onopen`, `onmessage`, `onerror`, `onclose`).
-  - Close the WebSocket connection cleanly if open or connecting (`socket.close()`).
+### 1. In-Bounds Mobile Clock Rendering (`src/components/GameTable.tsx`)
+- Move the clock badge inside the **GameTable top header status bar** (next to round number, table name, and provably fair status) where it is guaranteed to be 100% visible on all mobile screen sizes.
+- Also embed a compact live clock badge inside the **Roadmap HUD Header bar** (next to `#Round` and `Road` / `Bets` toggle buttons).
+- Remove negative `-top-9` positioning that causes `overflow-hidden` clipping on mobile browsers.
 
-### 2. Transient State Cleanup on Unmount (`src/components/P2PLobby.tsx`)
-- Inside the unmount cleanup function, explicitly reset transient state variables to release heap references:
-  - Reset `isMatchmaking` state to `false`.
-  - Clear `copiedRoomId`, `successMsg`, `errorMsg`, and `botSpamWarning`.
-  - Close all open modal overlays (`showQuickChallengeModal`, `showNotesModal`, `showReportModal`).
-  - Clear `selectedOpponent` and `resolvedRoom` objects.
-
-### 3. Verification of Polling Intervals (`src/components/P2PLobby.tsx` & `src/components/OneOnOneArena.tsx`)
-- Ensure all `setInterval` calls for room and chat updates cleanly call `clearInterval` on teardown.
+### 2. Styling & Mobile Responsiveness
+- Apply responsive font sizing (`text-[9px] xs:text-[10px] sm:text-xs`).
+- Use tabular numbers (`font-mono tabular-nums`) with dark glass background (`bg-black/80 backdrop-blur-md border border-amber-500/40`) for sharp contrast on mobile displays.
 
 ---
 
 ## Verification Plan
-1. **Linting & Compilation**: Execute `lint_applet` and `compile_applet` to confirm zero build or type errors.
-2. **Tab Switching Verification**: Verify smooth memory release when toggling between P2P Lobby, Leaderboard, and Game Table views without lingering event listeners or memory leaks.
+1. **Build & Lint Verification**: Run `lint_applet` and `compile_applet`.
+2. **Mobile Layout Check**: Ensure clock is clearly visible on mobile screen widths (320px–480px) and desktop layouts.

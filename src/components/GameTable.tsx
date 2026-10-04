@@ -247,6 +247,52 @@ export const GameTable = React.memo<GameTableProps>(({
 
   // Physical 3D Casino Table Parallax Engine (CSS transform variables)
   const { tableRef } = useTableParallax();
+
+  // Real-Time High Precision Clock (hh:mm:ss:ms AM/PM) synchronized with Server NTP timestamp
+  const [liveClockTime, setLiveClockTime] = useState<string>("");
+  const serverOffsetRef = useRef<number>(0);
+
+  // Fetch server NTP timestamp on component mount to synchronize time accurately
+  useEffect(() => {
+    let isMounted = true;
+    fetch("/api/time")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && typeof data.serverTime === "number" && isMounted) {
+          // Direct server time difference without latency adjustment as requested
+          serverOffsetRef.current = data.serverTime - Date.now();
+        }
+      })
+      .catch(() => {
+        // Fallback gracefully to local system clock if network fetch fails
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let animFrameId: number;
+    const updateClock = () => {
+      // Calculate synchronized time using server offset
+      const now = new Date(Date.now() + serverOffsetRef.current);
+      let hours = now.getHours();
+      const period = hours >= 12 ? "PM" : "AM";
+      hours = hours % 12 || 12;
+
+      const hh = String(hours).padStart(2, "0");
+      const mm = String(now.getMinutes()).padStart(2, "0");
+      const ss = String(now.getSeconds()).padStart(2, "0");
+      const ms = String(now.getMilliseconds()).padStart(3, "0");
+
+      setLiveClockTime(`${hh}:${mm}:${ss}:${ms} ${period}`);
+      animFrameId = requestAnimationFrame(updateClock);
+    };
+
+    animFrameId = requestAnimationFrame(updateClock);
+    return () => cancelAnimationFrame(animFrameId);
+  }, []);
   
   // Pro Auto Bet Engine 2.0 State
   type AutoBetStrategy = "FLAT" | "MARTINGALE" | "ANTI_MARTINGALE" | "ALTERNATE";
@@ -2632,31 +2678,41 @@ export const GameTable = React.memo<GameTableProps>(({
            </div>
         </div>
 
-        {/* BOTTOM LAYER: ICONIC21 INTEGRATED HUD CONSOLE */}
-        <div className="relative z-30 w-full shrink-0 flex flex-col lg:flex-row items-stretch gap-1 sm:gap-1.5 bg-black/90 backdrop-blur-2xl p-1 sm:p-1.5 rounded-xl sm:rounded-2xl border border-white/10 shadow-2xl touch-manipulation">
-           
-           {/* LEFT: ROADMAP MATRIX (Bead Road & Big Road) */}
-           <div className="w-full lg:w-[170px] xl:w-[200px] shrink-0 flex flex-col justify-between bg-black/90 backdrop-blur-xl p-1 sm:p-2 rounded-xl border border-white/10 shadow-lg sticky top-1 transition-all overflow-hidden">
-              {/* Header Stats Counter */}
-              <div className="flex items-center justify-between pb-1 sm:pb-1.5 border-b border-white/10 text-xs font-mono font-bold">
-                 <div className="flex items-center gap-1 sm:gap-1.5">
-                    <span className="text-amber-400 font-black tracking-tight text-[10px] sm:text-xs">
-                      #{currentRound?.roundNumber || 96}
-                    </span>
-                    <button
-                      onClick={() => setShowRoadmapPanel(!showRoadmapPanel)}
-                      className="px-1.5 py-0.5 rounded-md bg-white/10 hover:bg-white/20 text-[9px] text-amber-300 font-mono active:scale-95 transition-all cursor-pointer flex items-center gap-0.5"
-                      title={showRoadmapPanel ? "Collapse Roadmap Matrix" : "Expand Roadmap Matrix"}
-                    >
-                      <span className="text-[8px]">{showRoadmapPanel ? "▲" : "▼"}</span>
-                      <span className="text-[8px] uppercase tracking-wider hidden xs:inline">Road</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        sound.playButtonClick();
-                        setShowLiveTransparencyModal(true);
-                      }}
-                      className="px-1.5 py-0.5 rounded-md bg-amber-500/20 hover:bg-amber-500/35 border border-amber-500/40 text-[9px] text-amber-300 font-mono active:scale-95 transition-all cursor-pointer flex items-center gap-1 shadow-[0_0_8px_rgba(245,158,11,0.25)]"
+         {/* IN-BOUNDS TOP-LEFT FLOATING LIVE CLOCK WIDGET (Guaranteed 100% visible on mobile) */}
+         {liveClockTime && (
+           <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 z-40 flex items-center gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-black/85 backdrop-blur-md border border-amber-500/50 shadow-[0_4px_15px_rgba(0,0,0,0.85)] text-amber-300 pointer-events-none select-none">
+             <Clock className="w-3 h-3 text-amber-400 animate-pulse shrink-0" />
+             <span className="text-[9px] xs:text-[10px] sm:text-xs font-mono font-black tracking-tight tabular-nums text-amber-200">
+               {liveClockTime}
+             </span>
+           </div>
+         )}
+
+         {/* BOTTOM LAYER: ICONIC21 INTEGRATED HUD CONSOLE */}
+         <div className="relative z-30 w-full shrink-0 flex flex-col lg:flex-row items-stretch gap-1 sm:gap-1.5 bg-black/90 backdrop-blur-2xl p-1 sm:p-1.5 rounded-xl sm:rounded-2xl border border-white/10 shadow-2xl touch-manipulation">
+            
+            {/* LEFT: ROADMAP MATRIX (Bead Road & Big Road) */}
+            <div className="w-full lg:w-[170px] xl:w-[200px] shrink-0 flex flex-col justify-between bg-black/90 backdrop-blur-xl p-1 sm:p-2 rounded-xl border border-white/10 shadow-lg sticky top-1 transition-all overflow-hidden">
+               {/* Header Stats Counter */}
+               <div className="flex items-center justify-between pb-1 sm:pb-1.5 border-b border-white/10 text-xs font-mono font-bold">
+                  <div className="flex items-center gap-1 sm:gap-1.5">
+                     <span className="text-amber-400 font-black tracking-tight text-[10px] sm:text-xs">
+                       #{currentRound?.roundNumber || 96}
+                     </span>
+                     <button
+                       onClick={() => setShowRoadmapPanel(!showRoadmapPanel)}
+                       className="px-1.5 py-0.5 rounded-md bg-white/10 hover:bg-white/20 text-[9px] text-amber-300 font-mono active:scale-95 transition-all cursor-pointer flex items-center gap-0.5"
+                       title={showRoadmapPanel ? "Collapse Roadmap Matrix" : "Expand Roadmap Matrix"}
+                     >
+                       <span className="text-[8px]">{showRoadmapPanel ? "▲" : "▼"}</span>
+                       <span className="text-[8px] uppercase tracking-wider hidden xs:inline">Road</span>
+                     </button>
+                     <button
+                       onClick={() => {
+                         sound.playButtonClick();
+                         setShowLiveTransparencyModal(true);
+                       }}
+                       className="px-1.5 py-0.5 rounded-md bg-amber-500/20 hover:bg-amber-500/35 border border-amber-500/40 text-[9px] text-amber-300 font-mono active:scale-95 transition-all cursor-pointer flex items-center gap-1 shadow-[0_0_8px_rgba(245,158,11,0.25)]"
                       title={lang === "bn" ? "লাইভ বেট ও উইন/লস ট্রান্সপারেন্সি" : "Live Bets & Win/Loss Transparency"}
                     >
                       <ShieldCheck className="w-2.5 h-2.5 text-amber-400" />
@@ -2664,6 +2720,12 @@ export const GameTable = React.memo<GameTableProps>(({
                     </button>
                  </div>
                  <div className="flex items-center gap-1 sm:gap-2">
+                    {liveClockTime && (
+                      <span className="text-[8px] sm:text-[9px] font-mono font-black text-amber-200 bg-amber-950/80 border border-amber-500/40 px-1 sm:px-1.5 py-0.5 rounded flex items-center gap-1 shadow-sm">
+                        <Clock className="w-2.5 h-2.5 text-amber-400 animate-pulse shrink-0" />
+                        <span className="tabular-nums">{liveClockTime}</span>
+                      </span>
+                    )}
                     <span className="text-red-300 bg-red-950/80 border border-red-500/30 px-1 sm:px-1.5 py-0.5 rounded flex items-center gap-0.5 sm:gap-1 font-bold text-[8px] sm:text-[10px]">
                       <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block animate-pulse" />
                       {roadmap.filter(r => r.result === "DRAGON").length || 47}
