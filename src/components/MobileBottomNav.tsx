@@ -111,44 +111,28 @@ export const MobileBottomNav = React.memo<MobileBottomNavProps>(({
         <span className="text-[9px] uppercase tracking-wider font-bold">Elite</span>
       </button>
 
-      {/* 5. Wallet or Login */}
-      {!user ? (
-        <button
-          type="button"
-          onClick={() => {
-            sound.playButtonClick();
-            onOpenLogin?.();
-          }}
-          className="flex-1 flex flex-col items-center justify-center gap-1 text-amber-400 hover:text-amber-300 transition-all cursor-pointer active:scale-95"
-        >
-          <div className="w-7 h-7 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.3)]">
-            <span className="text-[11px] font-black">🔑</span>
-          </div>
-          <span className="text-[8.5px] font-black uppercase tracking-wider text-amber-300">
-            Login
-          </span>
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={() => {
-            sound.playButtonClick();
-            onOpenWallet();
-          }}
-          className="flex-1 flex flex-col items-center justify-center gap-1 text-neutral-400 hover:text-white transition-all cursor-pointer active:scale-95"
-        >
-          <div className="w-7 h-7 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-            <Wallet className="w-3.5 h-3.5" />
-          </div>
-          <span className="text-[8.5px] font-mono font-black text-white tabular-nums">
-            {formatCurrency(user.balanceType === "real" ? user.balance : user.demoBalance, {
-              currencyCode: activeCurrencyCode,
-              convertFromBase: true,
-              compact: true,
-            })}
-          </span>
-        </button>
-      )}
+      {/* 5. Wallet */}
+      <button
+        type="button"
+        onClick={() => {
+          sound.playButtonClick();
+          onOpenWallet();
+        }}
+        className="flex-1 flex flex-col items-center justify-center gap-1 text-neutral-400 hover:text-white transition-all cursor-pointer active:scale-95"
+      >
+        <div className="w-7 h-7 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+          <Wallet className="w-3.5 h-3.5" />
+        </div>
+        <span className="text-[8.5px] font-mono font-black text-white tabular-nums">
+          {user
+            ? formatCurrency(user.balanceType === "real" ? user.balance : user.demoBalance, {
+                currencyCode: activeCurrencyCode,
+                convertFromBase: true,
+                compact: true,
+              })
+            : "Wallet"}
+        </span>
+      </button>
     </nav>
   );
 });

@@ -80,6 +80,15 @@ export const PlayingCard = React.memo<PlayingCardProps>(({
   // Winner badge is revealed ONLY after the card has flipped and winner celebration is triggered
   const canShowWinner = Boolean(isWinner && flipped && (showWinnerCelebration || isSettled));
 
+  // Trigger tactile haptic vibration when winner is crowned
+  useEffect(() => {
+    if (canShowWinner) {
+      try {
+        haptics.cardWinnerReveal();
+      } catch {}
+    }
+  }, [canShowWinner]);
+
   return (
     <motion.div
       initial={
@@ -122,6 +131,46 @@ export const PlayingCard = React.memo<PlayingCardProps>(({
       className="relative w-14 h-20 xs:w-16 xs:h-22 sm:w-18 sm:h-26 select-none cursor-pointer gpu-accelerated"
       style={{ perspective: perf.isLowEnd ? undefined : 1200, transformStyle: "preserve-3d", willChange: "transform" }}
     >
+      {/* Subtle Golden Card Glow & Radiant Energy Halo on Winner Reveal */}
+      <AnimatePresence>
+        {canShowWinner && (
+          <>
+            {/* Ambient Golden Radiant Bloom */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: [1, 1.05, 1] }}
+              exit={{ opacity: 0, scale: 0.85 }}
+              transition={{
+                opacity: { duration: 0.35, ease: "easeOut" },
+                scale: { duration: 2.2, repeat: Infinity, ease: "easeInOut" },
+              }}
+              className={`absolute -inset-2.5 rounded-2xl pointer-events-none z-0 ${
+                perf.isLowEnd
+                  ? "bg-amber-400/20 border border-amber-400/40"
+                  : "bg-gradient-to-r from-amber-500/35 via-yellow-300/45 to-amber-500/35 blur-md border border-amber-300/60 shadow-[0_0_40px_rgba(251,191,36,0.6)]"
+              } animate-golden-card-glow`}
+            />
+
+            {/* Rotating Golden Light Orbit */}
+            {!perf.isLowEnd && (
+              <motion.div
+                initial={{ opacity: 0, rotate: 0 }}
+                animate={{ opacity: [0.4, 0.85, 0.4], rotate: 360 }}
+                exit={{ opacity: 0 }}
+                transition={{
+                  opacity: { duration: 2.5, repeat: Infinity, ease: "easeInOut" },
+                  rotate: { duration: 6, repeat: Infinity, ease: "linear" },
+                }}
+                className="absolute -inset-3.5 rounded-3xl pointer-events-none z-0 border border-dashed border-amber-400/40 blur-[0.5px] flex items-center justify-between"
+              >
+                <div className="w-2 h-2 rounded-full bg-amber-300 shadow-[0_0_10px_#fde047] -translate-x-1" />
+                <div className="w-2 h-2 rounded-full bg-yellow-200 shadow-[0_0_10px_#fef08a] translate-x-1" />
+              </motion.div>
+            )}
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Floating Winner Crown & Celebration Badge - Visible only after both cards flip and winner is settled */}
       <AnimatePresence>
         {canShowWinner && (
@@ -142,27 +191,6 @@ export const PlayingCard = React.memo<PlayingCardProps>(({
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Winner High-Voltage Aura with Shooting Energy Halo */}
-      {canShowWinner && (
-        <>
-          <div
-            className={`absolute -inset-1.5 rounded-2xl pointer-events-none transition-all ${
-              side === "DRAGON" ? "animate-dragon-aura" : "animate-tiger-aura"
-            } ${perf.isLowEnd ? "" : "blur-sm"}`}
-          />
-          {!perf.isLowEnd && (
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 4, repeat: 2, ease: "linear" }}
-              className="absolute -inset-2.5 pointer-events-none flex items-center justify-between"
-            >
-              <Star className="w-3 h-3 text-amber-300 fill-amber-300 drop-shadow" />
-              <Star className="w-3 h-3 text-amber-300 fill-amber-300 delay-300 drop-shadow" />
-            </motion.div>
-          )}
-        </>
-      )}
 
       {/* 3D Flipping Card Container with Dynamic Felt Shadow */}
       <motion.div
@@ -225,14 +253,21 @@ export const PlayingCard = React.memo<PlayingCardProps>(({
             transform: "rotateY(180deg)",
             pointerEvents: flipped ? "auto" : "none",
           }}
-          className={`absolute inset-0 w-full h-full rounded-xl bg-white border flex flex-col justify-between p-1.5 xs:p-2 sm:p-2.5 transition-shadow duration-300 ${
+          className={`absolute inset-0 w-full h-full rounded-xl bg-white border flex flex-col justify-between p-1.5 xs:p-2 sm:p-2.5 transition-[border-color,box-shadow] duration-300 overflow-hidden ${
             canShowWinner
-              ? side === "DRAGON"
-                ? "border-red-500 ring-4 ring-red-500/70 shadow-[0_0_40px_rgba(239,68,68,0.95)]"
-                : "border-amber-400 ring-4 ring-amber-400/70 shadow-[0_0_40px_rgba(251,191,36,1)]"
-              : "border-neutral-300"
+              ? "border-amber-300 ring-4 ring-amber-400/90 shadow-[0_0_40px_rgba(245,158,11,0.95),0_0_80px_rgba(251,191,36,0.45),inset_0_0_20px_rgba(254,240,138,0.35)]"
+              : "border-neutral-300 shadow-md"
           }`}
         >
+          {/* Subtle Golden Sheen Light Sweep on Reveal */}
+          {canShowWinner && (
+            <motion.div
+              initial={{ x: "-120%", opacity: 0 }}
+              animate={{ x: "220%", opacity: [0, 0.75, 0] }}
+              transition={{ duration: 1.8, repeat: Infinity, repeatDelay: 0.8, ease: "easeInOut" }}
+              className="absolute inset-0 w-2/3 h-full bg-gradient-to-r from-transparent via-amber-300/40 to-transparent skew-x-[-20deg] pointer-events-none z-20"
+            />
+          )}
 
           {/* Top Rank + Suit */}
           <div className="flex flex-col items-start leading-none z-10">

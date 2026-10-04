@@ -16,6 +16,7 @@ import { UserWallet } from "../types";
 import { formatCurrency, CURRENCIES, getStoredCurrencyCode } from "../utils/currency";
 import { motion, AnimatePresence } from "framer-motion";
 import { BrandLogo } from "./BrandLogo";
+import { SignalStrengthIndicator } from "./SignalStrengthIndicator";
 
 interface NavbarProps {
   user: UserWallet | null;
@@ -152,8 +153,8 @@ export const Navbar = React.memo<NavbarProps>(({
   const currentBalance = user ? (user.balanceType === "real" ? user.balance : user.demoBalance) : 0;
 
   return (
-    <header className="bg-neutral-950/95 backdrop-blur-2xl border-b border-white/10 sticky top-0 z-50 px-2 sm:px-4 lg:px-6 py-1.5 sm:py-2 shadow-2xl w-full select-none m-0">
-      <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-1.5 sm:gap-3">
+    <header className="bg-neutral-950/95 backdrop-blur-2xl border-b border-amber-500/20 sticky top-0 z-50 px-2 sm:px-4 lg:px-6 h-12 sm:h-14 flex items-center shadow-[0_4px_25px_rgba(0,0,0,0.85)] w-full select-none m-0">
+      <div className="max-w-[1600px] w-full mx-auto flex items-center justify-between gap-1.5 sm:gap-3">
         
         {/* Zone 1: Brand & Table Selector */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
@@ -171,13 +172,13 @@ export const Navbar = React.memo<NavbarProps>(({
           </div>
 
           {/* Table Switcher Dropdown */}
-          <div ref={dropdownRef} className="relative ml-1 sm:ml-2">
+          <div ref={dropdownRef} className="relative ml-0.5 sm:ml-2">
             <button
               onClick={() => setTableDropdownOpen(!tableDropdownOpen)}
-              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[9px] sm:text-[10px] font-bold text-amber-300 transition-all cursor-pointer shadow-sm active:scale-95"
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[9px] sm:text-[10px] font-bold text-amber-300 transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
             >
               <span>{currentTable.icon}</span>
-              <span className="uppercase tracking-wider font-mono">{currentTable.name}</span>
+              <span className="uppercase tracking-wider font-mono hidden xs:inline">{currentTable.name}</span>
               <ChevronDown className={`w-3 h-3 text-neutral-400 transition-transform ${tableDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
@@ -188,7 +189,7 @@ export const Navbar = React.memo<NavbarProps>(({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.95 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 w-60 sm:w-64 bg-neutral-900/95 backdrop-blur-2xl border border-amber-500/30 rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.9)] py-2 z-50 overflow-hidden"
+                  className="absolute left-0 top-full mt-2 w-60 sm:w-64 bg-neutral-900/95 backdrop-blur-2xl border border-amber-500/30 rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.9)] py-2 z-50 overflow-hidden"
                 >
                   <div className="px-3 py-1 border-b border-white/5 text-[9px] font-mono font-bold text-neutral-400 uppercase">
                     Select Table Arena
@@ -200,7 +201,7 @@ export const Navbar = React.memo<NavbarProps>(({
                         onSelectTable(t.id);
                         setTableDropdownOpen(false);
                       }}
-                      className={`w-full text-left px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-all flex items-center justify-between ${
+                      className={`w-full text-left px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-all flex items-center justify-between cursor-pointer ${
                         selectedTable === t.id 
                           ? "bg-amber-500/15 text-amber-300 border-l-2 border-amber-400" 
                           : "text-neutral-400 hover:bg-white/5 hover:text-white"
@@ -227,10 +228,10 @@ export const Navbar = React.memo<NavbarProps>(({
         </div>
 
         {/* Zone 2: Navigation Tabs (Desktop & Tablet) */}
-        <nav className="hidden md:flex items-center gap-1 bg-black/60 p-1 rounded-xl border border-white/10 shadow-inner">
+        <nav className="hidden lg:flex items-center gap-1 bg-black/60 p-1 rounded-xl border border-white/10 shadow-inner">
           <button
             onClick={() => setActiveTab('game')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
               activeTab === 'game' 
                 ? "bg-gradient-to-r from-amber-500 to-yellow-400 text-neutral-950 shadow-md font-black" 
                 : "text-neutral-400 hover:text-white hover:bg-white/5"
@@ -242,7 +243,7 @@ export const Navbar = React.memo<NavbarProps>(({
 
           <button
             onClick={() => setActiveTab('p2p')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
               activeTab === 'p2p' 
                 ? "bg-gradient-to-r from-amber-500 to-yellow-400 text-neutral-950 shadow-md font-black" 
                 : "text-neutral-400 hover:text-white hover:bg-white/5"
@@ -256,7 +257,7 @@ export const Navbar = React.memo<NavbarProps>(({
           {onOpenInstallApp && !isStandalone && (
             <button
               onClick={onOpenInstallApp}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/40 shadow-sm active:scale-95"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/40 shadow-sm active:scale-95"
               title={lang === "bn" ? "অ্যাপ ইনস্টল ও ওপেন গাইড" : "Install Mobile App"}
             >
               <Smartphone className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
@@ -266,7 +267,7 @@ export const Navbar = React.memo<NavbarProps>(({
 
           <button
             onClick={() => setActiveTab('leaderboard')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
               activeTab === 'leaderboard' 
                 ? "bg-gradient-to-r from-amber-500 to-yellow-400 text-neutral-950 shadow-md font-black" 
                 : "text-neutral-400 hover:text-white hover:bg-white/5"
@@ -277,14 +278,17 @@ export const Navbar = React.memo<NavbarProps>(({
           </button>
         </nav>
 
-        {/* Zone 3: Wallet, Sound & Menu Controls */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        {/* Zone 3: Telemetry, Wallet & Controls */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           
+          {/* Real-Time WebSocket Signal Strength & Latency Indicator */}
+          <SignalStrengthIndicator lang={lang} />
+
           {/* Sound Toggle Button (Hidden on Mobile, available in Menu) */}
           {onToggleSound && (
             <button
               onClick={onToggleSound}
-              className="hidden sm:flex w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 items-center justify-center text-neutral-300 hover:text-amber-300 transition-all active:scale-90 cursor-pointer"
+              className="hidden md:flex w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 items-center justify-center text-neutral-300 hover:text-amber-300 transition-all active:scale-90 cursor-pointer"
               title={soundEnabled ? "Mute Game Sound" : "Enable Game Sound"}
             >
               {soundEnabled ? (
@@ -299,7 +303,7 @@ export const Navbar = React.memo<NavbarProps>(({
           {onOpenBetHistory && (
             <button
               onClick={onOpenBetHistory}
-              className="hidden md:flex items-center gap-1 bg-gradient-to-r from-neutral-900 to-amber-950/60 hover:from-neutral-800 hover:to-amber-900/80 border border-amber-500/40 hover:border-amber-400 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer text-amber-300 text-xs font-bold"
+              className="hidden lg:flex items-center gap-1 bg-gradient-to-r from-neutral-900 to-amber-950/60 hover:from-neutral-800 hover:to-amber-900/80 border border-amber-500/40 hover:border-amber-400 px-2 sm:px-2.5 py-1 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer text-amber-300 text-xs font-bold"
               title={lang === "bn" ? "বেটিং হিস্ট্রি দেখুন" : "Bet History"}
             >
               <History className="w-3.5 h-3.5 text-amber-400" />
@@ -309,20 +313,20 @@ export const Navbar = React.memo<NavbarProps>(({
             </button>
           )}
 
-          {/* Wallet / Balance Indicator for Logged-In Users OR Login/Register for Guests */}
+          {/* Wallet / Balance Indicator for Logged-In Users OR Login for Guests */}
           {!user ? (
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1 sm:gap-1.5">
               <button
                 type="button"
                 onClick={onOpenLogin}
-                className="px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs border border-white/15 hover:border-amber-400/50 transition-all cursor-pointer active:scale-95 shadow-sm"
+                className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-neutral-950 font-black text-xs transition-all shadow-md shadow-amber-950/40 cursor-pointer active:scale-95 shrink-0"
               >
                 {lang === "bn" ? "লগইন" : "Login"}
               </button>
               <button
                 type="button"
                 onClick={onOpenRegister || onOpenLogin}
-                className="px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-neutral-950 font-black text-xs transition-all shadow-md shadow-amber-950/40 cursor-pointer active:scale-95"
+                className="hidden sm:inline-flex px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs border border-white/15 hover:border-amber-400/50 transition-all cursor-pointer active:scale-95 shadow-sm shrink-0"
               >
                 {lang === "bn" ? "রেজিস্টার" : "Sign Up"}
               </button>
@@ -330,13 +334,13 @@ export const Navbar = React.memo<NavbarProps>(({
           ) : (
             <button
               onClick={onOpenWallet}
-              className="hidden sm:flex items-center gap-1 sm:gap-2 bg-gradient-to-r from-neutral-900 to-neutral-950 border border-amber-500/30 hover:border-amber-400 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl transition-all shadow-inner active:scale-95 group cursor-pointer"
+              className="flex items-center gap-1 sm:gap-2 bg-gradient-to-r from-neutral-900 to-neutral-950 border border-amber-500/35 hover:border-amber-400/70 px-2 sm:px-2.5 py-1 rounded-xl transition-all shadow-inner active:scale-95 group cursor-pointer shrink-0"
             >
               <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
                 <Wallet className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
               </div>
               <div className="flex flex-col items-start leading-none">
-                <span className="text-[7px] font-bold text-neutral-400 uppercase tracking-wider hidden xs:inline">
+                <span className="text-[7px] font-bold text-neutral-400 uppercase tracking-wider hidden sm:inline">
                   {user.balanceType === "real" ? "REAL" : "DEMO"}
                 </span>
                 <span className="text-[10px] sm:text-[11px] font-black text-amber-300 font-mono tracking-tight">
@@ -346,17 +350,17 @@ export const Navbar = React.memo<NavbarProps>(({
                   })}
                 </span>
               </div>
-              <div className="w-4 h-4 rounded bg-amber-400 text-neutral-950 flex items-center justify-center shadow ml-0.5">
-                <Plus className="w-3 h-3 stroke-[3]" />
+              <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded bg-amber-400 text-neutral-950 flex items-center justify-center shadow ml-0.5">
+                <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3 stroke-[3]" />
               </div>
             </button>
           )}
 
           {/* Menu Button */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center">
             <button
               onClick={onOpenMenu}
-              className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition-all active:scale-90 cursor-pointer"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition-all active:scale-90 cursor-pointer shrink-0"
               title="Menu"
             >
               <svg viewBox="0 0 24 24" className="w-4 h-4 stroke-current fill-none stroke-[2.2]">

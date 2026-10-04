@@ -1322,6 +1322,14 @@ wss.on("connection", (ws) => {
   ws.on("message", (message) => {
     try {
       const data = JSON.parse(message.toString());
+      if (data.type === "PING" || data.type === "LATENCY_PING") {
+        ws.send(JSON.stringify({
+          type: "PONG",
+          timestamp: data.timestamp,
+          serverTime: Date.now(),
+        }));
+        return;
+      }
       if (data.type === "IDENTIFY") {
         const sid = String(data.sessionId || "").trim();
         const uid = String(data.userId || "").trim();
